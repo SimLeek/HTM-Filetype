@@ -103,16 +103,21 @@ def updateOverlapDutyCycle(neuron):
 
     return overlap_duty_cycle
 
+class HTMSynapse:
+    def __init__(self, neuron, permanence):
+        self.neuron = neuron
+        self.permanence = permanence
 
 class HTMColumnNeuron:
-    def potential_synapses(self):
-        return randomSample.randomSample(self.parent.input_layers_array(),
+    def generate_potential_synapses(self):
+        neurons = randomSample.randomSample(self.parent.input_layers_array(),
                             self.parent.possible_connections_per_neuron,
                             self.name)
-
-
+        synapses = [HTMSynapse(x,0.0) for x in neurons]
+        return synapses
 
     def initial_startup(self, name, layer):
+        #everything in here should be serialized unless otherwise noted
         # unique identifier in this layer to identify neuron (random >=0 <=max_int)
         self.name = name
         # class of what layer we're in (NOT SERIALIZED)
@@ -120,23 +125,32 @@ class HTMColumnNeuron:
         # name of what layer we're in
         self.layer_name = self.parent.name
 
-        self.active_synapses = randomSample.randomSample(self.potential_synapses(),
+        self.potential_synapses = self.generate_potential_synapses()
+
+        self.active_synapses = randomSample.randomSample(self.potential_synapses,
                                                          self.parent.active_connections_per_neuron,
                                                          self.name)
+
+        for s in self.active_synapses:
+            s.permanence = 1.0
 
         self.neighbors = randomSample.randomSample(self.parent.neurons,
                                                    self.parent.neighbors_per_neuron,
                                                    self.name)
 
         self.activated = 0
+        self.overlap = 0
+        self.boost = 0
+        self.min_duty_cycle = 0
+        self.active_duty_cycle = 0
+        self.overlap_duty_cycle = 0
+
 
     #put these functions in layers to increase speed/memory
     def calculate_overlap(self):
         self.overlap=0
-        for s in self.potential_synapses():
+        for s in self.active_synapses:
             self.overlap = self.overlap + s.neuron.activated
-            if s == self.last_connected_synapse:
-                break
         if self.overlap < self.parent.min_overlap:
             self.overlap = 0
         else:
@@ -156,15 +170,21 @@ class HTMColumnNeuron:
         :return:
         """
 
-        for s in self.potential_synapses:
+        for i, s in enumerate(self.active_synapses):
             if s.activated:
                 s.permanence += self.parent.permanence_inc
                 s.permanence = min(1.0, s.permanence)
             else:
                 s.permanence -= self.parent.permanence_dec
                 s.permanence = max(0.0, s.permanence)
-            if s == self.last_connected_synapse:
-                break
+                if s.permanence < self.parent.connected_permanence:
+                    self.active_synapses.pop(i)
+
+    def increase_all_permanences(self, increment):
+        for s in self.potential_synapses:
+            s.permanence+= increment
+            if s.permanence > self.parent.connected_permanence:
+                self.active_synapses.append(s)
 
     def recalculate_duty_cycles(self):
         """
@@ -179,6 +199,7 @@ class HTMColumnNeuron:
         self.overlap_duty_cycle = updateOverlapDutyCycle(self)
         if self.overlap_duty_cycle < self.min_duty_cycle:
             self.increase_all_permanences(0.1*self.parent.connected_permanence)
+
 
 
 
