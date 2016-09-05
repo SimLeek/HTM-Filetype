@@ -108,7 +108,64 @@ class HTMSynapse:
         self.neuron = neuron
         self.permanence = permanence
 
+class HTMColumnCell:
+    def _init_(self, parent, synapses_per_cell):
+        self.segments = []
+
+    def get_previous_active_segment(self):
+        pass
+
+class HTMSegment:
+    def _init_(self, parent, synapses_per_cell):
+        self.was_learning = False
+        self.is_active = False
+        self.synapses = []
+
+    def get_previous_active_synapses(self, bool):
+
 class HTMColumnNeuron:
+
+    def get_previous_best_matching_cell(self):
+        pass
+
+    def check_predicted_and_learn(self):
+        buPredicted = False
+        IcChosen = False
+        for c in self.cells:
+            if c.wasPredicting == True:
+                s = c.get_previous_active_segment()
+                buPredicted = True
+                c.active_state = 1
+                if s.was_learning:
+                    IcChosen = True
+                    c.learn_state = 1
+        if buPredicted == False:
+            for c in self.cells:
+                c.active_state=1
+        if IcChosen == False:
+            c,s = self.get_previous_best_matching_cell()
+            c.learn_state = 1
+            sUpdate = s.get_previous_active_synapses(True)
+            self.segmentUpdateList.append(sUpdate)
+
+    def reinforce_predicted(self):
+        for c in self.cells:
+            for s in c.segments:
+                if s.is_active:
+                    c.predictive_state = 1
+                    activeUpdate = s.active_synapses(False)
+                    self.segmentUpdateList.append(activeUpdate)
+
+    def reinforce_segments(self):
+        for c in self.cells:
+            if c.learn_state == 1:
+                c.adapt_segments(self.segmentUpdateList, True)
+                self.segmentUpdateList = []
+            elif c.active_state == 0 and c.prior_predictive_state == 1:
+                c.adapt_segments(self.segmentUpdateList, False)
+                self.segmentUpdateList = []
+
+
     def generate_potential_synapses(self):
         neurons = randomSample.randomSample(self.parent.input_layers_array(),
                             self.parent.possible_connections_per_neuron,
@@ -144,6 +201,7 @@ class HTMColumnNeuron:
         self.min_duty_cycle = 0
         self.active_duty_cycle = 0
         self.overlap_duty_cycle = 0
+        self.segmentUpdateList = []
 
 
     #put these functions in layers to increase speed/memory
