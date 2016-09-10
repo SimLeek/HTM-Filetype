@@ -18,7 +18,7 @@ class HTMLayer:
                         min_overlap=20
                         ):
         # unique identifier in this group to identify layer
-        self.name = randomSample.randomSample(xrange(max_neurons),1)
+        self.name = seed
         self.num_neurons = num_neurons
         neuron_names = randomSample.randomSample(xrange(max_neurons),num_neurons)
         #choose neuron names from here for uniqueness
@@ -258,6 +258,8 @@ class HTMColumnNeuron:
         if self.overlap_duty_cycle < self.min_duty_cycle:
             self.increase_all_permanences(0.1*self.parent.connected_permanence)
 
+
+if __name__ == "__main__":
 
 
 
