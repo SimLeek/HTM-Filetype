@@ -110,8 +110,9 @@ def randomOfArray(array, min_loc, max_loc, seed):
 
 def randomSample(input_array, size, seed):
     #Algorithm R implementation
-    #todo: the random tree division should be O(log(n)) while this is O(n)
-    #
+    #todo: the random tree division should be O(desired size) while this is O(input array)
+    #todo: random tree method also allows for O(log(n)) determination of the n'th item in a chosen sample
+    # given a seed (in case I just want to store the random number and not the entire list of connections)
     sample = []
 
     for i in range(size):
