@@ -1,10 +1,21 @@
 import randomSample
-import math
-from operator import itemgetter, attrgetter, methodcaller
+from operator import attrgetter
 
 max_neurons = 1000000000
 
 class HTMLayer:
+
+    def __init__(self):
+        self.name = None
+        self.num_neurons = None
+        self.neurons = []
+        self.possible_connections_per_neuron = None
+        self.active_connections_per_neuron = None
+        self.connected_permanence = None
+        self.neighbors_per_neuron = None
+        self.permanence_inc = None
+        self.permanence_dec = None
+        self.min_overlap = None
 
     def initial_startup(self,
                         seed,
@@ -20,11 +31,11 @@ class HTMLayer:
         # unique identifier in this group to identify layer
         self.name = seed
         self.num_neurons = num_neurons
-        neuron_names = randomSample.randomSample(xrange(max_neurons),num_neurons)
+        neuron_names = randomSample.randomSample(xrange(max_neurons),num_neurons, seed)
         #choose neuron names from here for uniqueness
-        self.neurons=[]
         for i in range(0,num_neurons):
-            next_neuron= HTMColumnNeuron.initial_startup(neuron_names[i], self)
+            next_neuron= HTMColumnNeuron()
+            next_neuron.initial_startup(neuron_names[i], self)
             self.neurons.append(next_neuron)
 
         self.possible_connections_per_neuron = possible_connections_per_neuron
@@ -35,36 +46,43 @@ class HTMLayer:
         self.permanence_dec = permanence_dec
         self.min_overlap = min_overlap
 
-def kthScore(neighbors, desired_local_activity):
+        return self
+
+    def input_layers_array(self):
+        #dummy function
+        return [x for x in range(1000)]
+
+
+def kth_score(neighbors, desired_local_activity):
     #scan over neighbors list, putting 'desired_local_activity' number of neighbors
     # into a sorted hash tree. Then, for the next neighbors, place them in the
     # sorted list and knock off the lowest member
 
-    nList = []
+    n_list = []
     for i, n in enumerate(neighbors):
         if i<desired_local_activity:
-            nList.append(n)
+            n_list.append(n)
         else:
-            if n.active_duty_cycle > nList[-1].active_duty_cycle:
-                nList.pop()
-                nList.append(n)
-        nList.sort(key=attrgetter('active_duty_cycle'))
+            if n.active_duty_cycle > n_list[-1].active_duty_cycle:
+                n_list.pop()
+                n_list.append(n)
+        n_list.sort(key=attrgetter('active_duty_cycle'))
 
-    return nList[-1].active_duty_cycle
+    return n_list[-1].active_duty_cycle
 
 
-def maxDutyCycle(neighbors):
+def max_duty_cycle(neighbors):
     #go through all and find max duty cycle
 
-    max_duty_cycle = 0.0
+    max_duty_cycle_val = 0.0
 
     for n in neighbors:
-        if n.active_duty_cycle > max_duty_cycle:
-            max_duty_cycle = n.active_duty_cycle
+        if n.active_duty_cycle > max_duty_cycle_val:
+            max_duty_cycle_val = n.active_duty_cycle
 
-    return max_duty_cycle
+    return max_duty_cycle_val
 
-def updateActiveDutyCycle(neuron):
+def update_active_duty_cycle(neuron):
 
     if neuron.activated:
         #subtract average out but add 1.
@@ -81,7 +99,7 @@ def updateActiveDutyCycle(neuron):
     return active_duty_cycle
 
 
-def boostFunction(active_duty_cycle, min_duty_cycle):
+def boost_function(active_duty_cycle, min_duty_cycle):
 
     if active_duty_cycle >= min_duty_cycle:
         return 1.0
@@ -91,7 +109,7 @@ def boostFunction(active_duty_cycle, min_duty_cycle):
         return 1/(min_duty_cycle - active_duty_cycle)
 
 
-def updateOverlapDutyCycle(neuron):
+def update_overlap_duty_cycle(neuron):
     if neuron.overlap > neuron.parent.min_overlap:
         overlap_duty_cycle = neuron.overlap_duty_cycle - \
                             ((neuron.overlap_duty_cycle - 1.0)
@@ -109,21 +127,29 @@ class HTMSynapse:
         self.permanence = permanence
 
 class HTMColumnCell:
-    def _init_(self, parent, synapses_per_cell):
+    def __init__(self, parent, segments_per_cell):
         self.segments = []
+        self.parent = parent
+        self.segments_per_cell = segments_per_cell
 
     def get_previous_active_segment(self):
         pass
 
 class HTMSegment:
-    def _init_(self, parent, synapses_per_cell):
+    def __init__(self, parent, synapses_per_segment):
         self.was_learning = False
         self.is_active = False
         self.synapses = []
+        self.parent = parent
+        self.max_synapses = synapses_per_segment
 
-    def get_previous_active_synapses(self, bool):
+    def get_previous_active_synapses(self, boolean):
+        pass
 
 class HTMColumnNeuron:
+
+    def __init__(self):
+        pass
 
     def get_previous_best_matching_cell(self):
         pass
@@ -167,9 +193,12 @@ class HTMColumnNeuron:
 
 
     def generate_potential_synapses(self):
-        neurons = randomSample.randomSample(self.parent.input_layers_array(),
+        '''neurons = randomSample.randomSample(self.parent.input_layers_array(),
                             self.parent.possible_connections_per_neuron,
-                            self.name)
+                            self.name)'''
+        neurons = randomSample.randomSample(xrange(10000),
+                                            self.parent.possible_connections_per_neuron,
+                                            self.name)
         synapses = [HTMSynapse(x,0.0) for x in neurons]
         return synapses
 
@@ -203,6 +232,8 @@ class HTMColumnNeuron:
         self.overlap_duty_cycle = 0
         self.segmentUpdateList = []
 
+        return self
+
 
     #put these functions in layers to increase speed/memory
     def calculate_overlap(self):
@@ -215,7 +246,7 @@ class HTMColumnNeuron:
             self.overlap = self.overlap * self.boost
 
     def calculate_inhibition(self):
-        self.min_local_activity = kthScore(self.neighbors, self.parent.desired_local_activity)
+        self.min_local_activity = kth_score(self.neighbors, self.parent.desired_local_activity)
 
         if self.overlap > 0 and self.overlap >= self.min_local_activity:
             self.activated = 1.0
@@ -250,19 +281,44 @@ class HTMColumnNeuron:
         :return:
         """
 
-        self.min_duty_cycle = 0.01* maxDutyCycle(self.neighbors)
-        self.active_duty_cycle = updateActiveDutyCycle(self)
-        self.boost = boostFunction(self.active_duty_cycle, self.min_duty_cycle)
+        self.min_duty_cycle = 0.01 * max_duty_cycle(self.neighbors)
+        self.active_duty_cycle = update_active_duty_cycle(self)
+        self.boost = boost_function(self.active_duty_cycle, self.min_duty_cycle)
 
-        self.overlap_duty_cycle = updateOverlapDutyCycle(self)
+        self.overlap_duty_cycle = update_overlap_duty_cycle(self)
         if self.overlap_duty_cycle < self.min_duty_cycle:
             self.increase_all_permanences(0.1*self.parent.connected_permanence)
 
 
 if __name__ == "__main__":
 
+    import HTMVisualizations
+    import math
 
+    '''layer = HTMLayer()
+    layer.initial_startup(583475683,
+                          100,
+                          10,
+                          2,
+                          2,
+                          0.6,
+                          0.4,
+                          0.1,
+                          2)
+    '''
+    point_displayer = HTMVisualizations.vtk_points()
 
+    layer_sqrt = math.ceil(math.sqrt(10000))
+
+    layer_z = 0
+
+    for i in range(10000):
+        point_displayer.add_point([i%layer_sqrt, math.floor(i/layer_sqrt), layer_z], [255,200,200])
+
+    #point_displayer.add_line(0, 1, [255, 200, 200])
+    point_displayer.set_poly_data()
+
+    point_displayer.visualize()
 
 
 
