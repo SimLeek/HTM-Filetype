@@ -55,9 +55,9 @@ class KeyPressInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         global_camera.SetPosition(pos[0] + norm[0] * 10,
                                   pos[1] + norm[1] * 10,
                                   pos[2] + norm[2] * 10)
-        global_camera.SetFocalPoint(pos[0] + norm[0] * 20,
-                                    pos[1] + norm[1] * 20,
-                                    pos[2] + norm[2] * 20)
+        global_camera.SetFocalPoint(pos[0] - norm[0] * 20,
+                                    pos[1] - norm[1] * 20,
+                                    pos[2] - norm[2] * 20)
 
     def _yaw_right(self):
         global_camera.Yaw(-10)
@@ -85,6 +85,50 @@ class KeyPressInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             global_keyDic[key]()
         else:
             print(key)
+
+class vtk_triangle_strip:
+    def __init__(self):
+        self.points = vtk.vtkPoints()
+        self.triangle_strip = vtk.vtkTriangleStrip()
+        self.cells = vtk.vtkCellArray()
+        self.cells.InsertMextCell(self.triangle_strip)
+        self.polydata = vtk.vtkPolyData()
+        self.polydata.SetPoints(self.points)
+        self.polyData.SetStrips(self.cells)
+
+        self.num_ids = 0
+
+    def add_point(self, x, y, z):
+        self.points.InsertNextPoint(x,y,z)
+        self.num_ids = self.num_ids +1
+
+        self.triangle_strip.GetPointIds().SetNumberOfIds(self.num_ids)
+        self.triangle_strip.GetPointIds().SetId(self.num_ids - 1, self.num_ids - 1)
+
+    def visualize(self):
+        self.mapper = vtk.vtkDataSetMapper()
+        if vtk.VTK_MAJOR_VERSION <=5:
+            self.mapper.SetInput(self.polydata)
+        else:
+            self.mapper.SetInputData(self.polydata)
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(self.mapper)
+        actor.GetProperty().SetRepresentationToWireframe()
+
+        # Create a renderer, render window, and interactor
+        renderer = vtk.vtkRenderer()
+        renderWindow = vtk.vtkRenderWindow()
+        renderWindow.AddRenderer(renderer)
+        renderWindowInteractor = vtk.vtkRenderWindowInteractor()
+        renderWindowInteractor.SetRenderWindow(renderWindow)
+
+        renderer.AddActor(actor)
+        renderWindow.Render()
+        renderWindowInteractor.Start()
+
+
+
 
 
 class vtk_points:
@@ -190,7 +234,7 @@ if __name__ == "__main__":
     simp_g = OpenSimplex(seed=535)
     simp_b = OpenSimplex(seed=656)
 
-    for i in xrange(100000):
+    '''for i in xrange(100000):
         x = randomSample.randInt(0, 1000, 4237842 + i)
         y = randomSample.randInt(0, 1000, 5437474 + i)
 
@@ -216,11 +260,11 @@ if __name__ == "__main__":
         z = pos_val * 254.0
 
         point_displayer.add_point([x-100, y-100, z-100], [160, int(z), 20])
+'''
 
 
 
-
-    '''for i in xrange(100000):
+    for i in xrange(100000):
 
 
         x = randomSample.randInt(0, 1000, 4237842 + i)
@@ -258,7 +302,7 @@ if __name__ == "__main__":
         #r5 = int((r5)*255.0/2.0)
         #lim octaves->inf gives 1/2^x sum (=1)
         if r> 160:
-            point_displayer.add_point([x,y,z], [r,r,r])'''
+            point_displayer.add_point([x,y,z], [r,r,r])
 
 
 
