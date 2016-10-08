@@ -54,8 +54,9 @@ def n_dimensional_n_split(min_max_array, n):
         lengths[min_max_array[i + 1] - min_max_array[0]].append(i)
         vol = vol * lengths[-1]
 
-    n_cube_len = int((vol**(1.0/(len(min_max_array)/2)))+.5)
+    n_cube_len = int(((vol**(1.0/(len(min_max_array)/2.0))) / n)+.5)
 
+   #n-dimensional space filling algorithm
     points = []
     for i in xrange(len(min_max_array)/2):
         new_points = []
@@ -65,14 +66,20 @@ def n_dimensional_n_split(min_max_array, n):
             new_points.append(min_max_array[i*2]+n_cube_len*j)
         points = new_points
 
-
     num=len(points) / (len(min_max_array)/2)
 
     sorted_lengths = sorted(lengths)
 
-
-
     if num<n:
+        #select one of the dimensions, remove, and use the
+        # n-dimensional space filling algorithm
+        #to fill it up with as many points as it can hold,
+        #then, add the max or min to the points in the original removed dimension place
+        #add points to point array until num==n, going out from center projected onto largest face
+        #if num!=n still, add points to next largest face
+
+    elif num>n:
+        #remove points closest to smallest faces, going inwards, until num==n
 
 
 
