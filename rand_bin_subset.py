@@ -41,36 +41,52 @@ def n_split_points(min,max,n):
 
     return vals
 
-def n_dimensional_n_split(min_max_array, n):
-    if len(min_max_array)%2 != 0 or len(min_max_array)==0:
-        raise IndexError("array is not correct size")
+def all_the_ds(min_max_array, lengths, n_cube_len):
+    # n-dimensional space filling algorithm
+    points = []
+    for i in xrange(len(min_max_array) / 2):
+        new_points = []
+        for j in xrange((lengths[i]) / (n_cube_len)):
+            for k in xrange(i):
+                new_points.append(points[k])
+            new_points.append(min_max_array[i * 2] + n_cube_len * j)
+        points = new_points
 
-    lengths={}
+    return points
 
-    vol=1
+def get_d_lengths(min_max_array):
+    lengths = {}
+
     for i in xrange(len(min_max_array), step=2):
         if min_max_array[i+1]-min_max_array[0] not in lengths:
             lengths[min_max_array[i+1]-min_max_array[0]]=[]
         lengths[min_max_array[i + 1] - min_max_array[0]].append(i)
-        vol = vol * lengths[-1]
 
-    n_cube_len = int(((vol**(1.0/(len(min_max_array)/2.0))) / n)+.5)
+    return lengths
 
-   #n-dimensional space filling algorithm
-    points = []
-    for i in xrange(len(min_max_array)/2):
-        new_points = []
-        for j in xrange((lengths[i])/(n_cube_len)):
-            for k in xrange(i):
-                new_points.append(points[k])
-            new_points.append(min_max_array[i*2]+n_cube_len*j)
-        points = new_points
+def get_d_thickness(lengths):
+    vol = 1
+    for i in xrange(len(lengths)):
+        vol = vol * lengths[i]
+    return vol
 
-    num=len(points) / (len(min_max_array)/2)
+def n_dimensional_n_split(min_max_array, n):
+    if len(min_max_array)%2 != 0 or len(min_max_array)==0:
+        raise IndexError("array is not correct size")
 
-    sorted_lengths = sorted(lengths)
+    lengths = get_d_lengths(min_max_array)
 
-    if num<n:
+    thickness = get_d_thickness(lengths)
+
+    tiny_d_cube_len = int(((thickness**(1.0/(len(lengths)))) / n)+.5)
+
+    tiny_ds = all_the_ds(min_max_array, lengths, tiny_d_cube_len)
+
+    tiny_ds_per_big_d=len(tiny_ds) / (len(min_max_array)/2)
+
+    sorted_d_lengths = sorted(lengths)
+
+    if tiny_ds_per_big_d<n:
         #select one of the dimensions, remove, and use the
         # n-dimensional space filling algorithm
         #to fill it up with as many points as it can hold,
@@ -78,7 +94,7 @@ def n_dimensional_n_split(min_max_array, n):
         #add points to point array until num==n, going out from center projected onto largest face
         #if num!=n still, add points to next largest face
 
-    elif num>n:
+    elif tiny_ds_per_big_d>n:
         #remove points closest to smallest faces, going inwards, until num==n
 
 
