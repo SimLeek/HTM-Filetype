@@ -1,3 +1,5 @@
+import math
+
 def XORShiftRNG(seed):
     r=seed
     r ^= (r<<21)
@@ -41,15 +43,23 @@ def n_split_points(min,max,n):
 
     return vals
 
-def all_the_ds(min_max_array, lengths, n_cube_len):
+def get_tiny_d_tip(min_max_array, i, n_cube_len):
+    big_d_length = min_max_array[i+1] - min_max_array[i]
+    ds_overflowing = math.ceil(big_d_length / float(n_cube_len))
+    the_tip = ds_overflowing * n_cube_len - big_d_length
+
+    return the_tip
+
+def stuff_the_ds(min_max_array, lengths, n_cube_len):
     # n-dimensional space filling algorithm
     points = []
     for i in xrange(len(min_max_array) / 2):
+        offset = int(get_tiny_d_tip(min_max_array, i, n_cube_len) / 2.0)
         new_points = []
         for j in xrange((lengths[i]) / (n_cube_len)):
             for k in xrange(i):
                 new_points.append(points[k])
-            new_points.append(min_max_array[i * 2] + n_cube_len * j)
+            new_points.append(-offset + min_max_array[i * 2] + n_cube_len * j)
         points = new_points
 
     return points
@@ -70,7 +80,7 @@ def get_d_thickness(lengths):
         vol = vol * lengths[i]
     return vol
 
-def n_dimensional_n_split(min_max_array, n):
+def pixel_blur_d(min_max_array, n):
     if len(min_max_array)%2 != 0 or len(min_max_array)==0:
         raise IndexError("array is not correct size")
 
@@ -78,24 +88,9 @@ def n_dimensional_n_split(min_max_array, n):
 
     thickness = get_d_thickness(lengths)
 
-    tiny_d_cube_len = int(((thickness**(1.0/(len(lengths)))) / n)+.5)
+    tiny_d_cube_len = int(math.ceil((thickness**(1.0/(len(lengths)))) / n))
 
-    tiny_ds = all_the_ds(min_max_array, lengths, tiny_d_cube_len)
-
-    tiny_ds_per_big_d=len(tiny_ds) / (len(min_max_array)/2)
-
-    sorted_d_lengths = sorted(lengths)
-
-    if tiny_ds_per_big_d<n:
-        #select one of the dimensions, remove, and use the
-        # n-dimensional space filling algorithm
-        #to fill it up with as many points as it can hold,
-        #then, add the max or min to the points in the original removed dimension place
-        #add points to point array until num==n, going out from center projected onto largest face
-        #if num!=n still, add points to next largest face
-
-    elif tiny_ds_per_big_d>n:
-        #remove points closest to smallest faces, going inwards, until num==n
+    return stuff_the_ds(min_max_array, lengths, tiny_d_cube_len)
 
 
 
