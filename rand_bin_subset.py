@@ -92,10 +92,31 @@ def pixel_blur_d(min_max_array, n):
 
     return stuff_the_ds(min_max_array, lengths, tiny_d_cube_len)
 
+def n_dimensional_n_split(min_max_array, n):
 
+    tiny_ds = pixel_blur_d(min_max_array, n)
+
+    tiny_ds_per_big_d=len(tiny_ds) / (len(min_max_array)/2)
+
+    while tiny_ds_per_big_d<n:
+        n = n-tiny_ds_per_big_d
+
+        tiny_ds.append(pixel_blur_d(min_max_array, n))
+
+        tiny_ds_per_big_d = len(tiny_ds) / (len(min_max_array) / 2)
+
+def n_dimensional_midpoint(point1, point2):
+    midpoint = []
+
+    for i in xrange(len(point1)):
+        dist = abs(point1[i] - point2[i])
+        min_pt = min(point1[i], point2[i])
+        midpoint.append(int(min_pt + dist / 2.0))
+
+    return midpoint
 
 if __name__ == "__main__":
-    max=9223372036854775807
-    min=0
+    maximum=9223372036854775807
+    minimum=0
 
-    print(n_split_points(min,max, 100))
+    print(n_dimensional_midpoint([1,2,3], [-3,-2,-1]))
