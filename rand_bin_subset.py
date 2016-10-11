@@ -43,34 +43,36 @@ def n_split_points(min,max,n):
 
     return vals
 
-def get_tiny_d_tip(min_max_array, i, n_cube_len):
-    big_d_length = min_max_array[i+1] - min_max_array[i]
-    ds_overflowing = math.ceil(big_d_length / float(n_cube_len))
-    the_tip = ds_overflowing * n_cube_len - big_d_length
+def get_tiny_d_tip(lengths, i, n_cube_len):
+    big_d_length = lengths[i]
+    the_tip = big_d_length % n_cube_len
 
     return the_tip
 
 def stuff_the_ds(min_max_array, lengths, n_cube_len):
     # n-dimensional space filling algorithm
     points = []
-    for i in xrange(len(min_max_array) / 2):
-        offset = int(get_tiny_d_tip(min_max_array, i, n_cube_len) / 2.0)
+    for i in xrange(len(lengths)):
+        offset = int((n_cube_len + get_tiny_d_tip(lengths, i, n_cube_len))/2)
         new_points = []
-        for j in xrange((lengths[i]) / (n_cube_len)):
-            for k in xrange(i):
-                new_points.append(points[k])
-            new_points.append(-offset + min_max_array[i * 2] + n_cube_len * j)
+        if i==0:
+            for j in xrange((lengths[i]) / (n_cube_len)):
+                new_points.append(offset + min_max_array[i * 2] + n_cube_len * j)
+        else:
+            for j in xrange(len(points)/i):
+                for k in xrange((lengths[i]) / (n_cube_len)):
+                    for l in xrange(i):
+                        new_points.append(points[j * i + l])
+                    new_points.append(offset + min_max_array[i * 2] + n_cube_len * k)
         points = new_points
 
     return points
 
 def get_d_lengths(min_max_array):
-    lengths = {}
+    lengths = []
 
-    for i in xrange(len(min_max_array), step=2):
-        if min_max_array[i+1]-min_max_array[0] not in lengths:
-            lengths[min_max_array[i+1]-min_max_array[0]]=[]
-        lengths[min_max_array[i + 1] - min_max_array[0]].append(i)
+    for i in xrange(len(min_max_array)/2):
+        lengths.append(min_max_array[i*2+1]-min_max_array[i*2])
 
     return lengths
 
@@ -88,7 +90,7 @@ def pixel_blur_d(min_max_array, n):
 
     thickness = get_d_thickness(lengths)
 
-    tiny_d_cube_len = int(math.ceil((thickness**(1.0/(len(lengths)))) / n))
+    tiny_d_cube_len = int(math.ceil((thickness/n)**(1.0/(len(lengths)))))
 
     return stuff_the_ds(min_max_array, lengths, tiny_d_cube_len)
 
@@ -101,9 +103,11 @@ def n_dimensional_n_split(min_max_array, n):
     while tiny_ds_per_big_d<n:
         n = n-tiny_ds_per_big_d
 
-        tiny_ds.append(pixel_blur_d(min_max_array, n))
+        tiny_ds.extend(pixel_blur_d(min_max_array, n))
 
         tiny_ds_per_big_d = len(tiny_ds) / (len(min_max_array) / 2)
+
+    return tiny_ds
 
 def n_dimensional_midpoint(point1, point2):
     midpoint = []
@@ -119,4 +123,6 @@ if __name__ == "__main__":
     maximum=9223372036854775807
     minimum=0
 
-    print(n_dimensional_midpoint([1,2,3], [-3,-2,-1]))
+    print("n_dimensional_midpoint:", n_dimensional_midpoint([1,2,3], [-3,-2,-1]))
+
+    print("n_dimensional_n_split:", n_dimensional_n_split([0,100,0,100],104))
