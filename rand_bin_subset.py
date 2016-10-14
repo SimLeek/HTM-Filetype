@@ -119,10 +119,59 @@ def n_dimensional_midpoint(point1, point2):
 
     return midpoint
 
+def unknown_length_sorted_array_2n_search_1(search_val, arr, pos, array_div = 1):
+    step = 1
+    prev_pos = pos
+    prev_val = None
+    for i in xrange(array_div):
+        try:
+            if arr[pos*array_div + i] > search_val[i] and pos*array_div + i >= 0:
+                while arr[pos*array_div + i] > search_val[i] and pos*array_div + i >= 0 \
+                        and (i==0 or arr[pos * array_div + i - 1] == search_val[i - 1]):
+                    prev_pos = pos
+                    pos = pos - step
+                    step = step*2
+            elif arr[pos*array_div + i] < search_val[i] and pos*array_div + i >= 0:
+                while arr[pos*array_div + i] < search_val[i] and pos*array_div + i >= 0\
+                        and (i==0 or arr[pos*array_div + i - 1] == search_val[i-1]):
+                    prev_pos = pos
+                    pos = pos + step
+                    step = step*2
+            if arr[pos*array_div + i] != search_val[i]:
+                break
+            else:
+                step = 1
+        except IndexError:
+            pass
+
+    if pos < 0:
+        pos = 0
+
+    if (pos + 1)*array_div - 1 >= len(arr):
+        pos = len(arr)/array_div - 1
+
+    return prev_pos, pos
+
+
 if __name__ == "__main__":
     maximum=9223372036854775807
     minimum=0
 
-    print("n_dimensional_midpoint:", n_dimensional_midpoint([1,2,3], [-3,-2,-1]))
 
-    print("n_dimensional_n_split:", n_dimensional_n_split([0,100,0,100],104))
+    test_array = []
+    for i in xrange(100):
+        test_array.append(randInt(0,10000,48736489723+i))
+
+    test_array.sort()
+
+
+    test_array = n_dimensional_n_split([0,100,0,100], 100)
+
+
+    print("test_array:", test_array)
+
+    a , b = unknown_length_sorted_array_2n_search_1([65,95], test_array, 50, 2)
+    print("alg:", a , b)
+    print("arr a:", test_array[2*a], test_array[2*a+1])
+    print("arr b:", test_array[2 * b], test_array[2 * b + 1])
+
