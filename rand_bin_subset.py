@@ -229,6 +229,7 @@ def n_dimensional_n_split(min_max_array, n):
                 new_tiny_ds = tiny_ds[0:duplicate_loc*n+n-1]
                 new_tiny_ds.extend(pt)
                 new_tiny_ds.extend(tiny_ds[duplicate_loc*n+n:-1])
+                tiny_ds = new_tiny_ds
             else:
                 if duplicate_loc!=tiny_ds_per_big_d:
                     next_pt = []
@@ -246,6 +247,7 @@ def n_dimensional_n_split(min_max_array, n):
                 new_tiny_ds = tiny_ds[0:duplicate_loc * n + n - 1]
                 new_tiny_ds.extend(replacement_pt)
                 new_tiny_ds.extend(tiny_ds[duplicate_loc * n + n:-1])
+                tiny_ds = new_tiny_ds
 
 
         tiny_ds_per_big_d = len(tiny_ds) / (len(min_max_array) / 2)
