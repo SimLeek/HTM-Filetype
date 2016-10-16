@@ -177,6 +177,8 @@ def search_array_2n_contiguous_subset_axis_first_match(search_val, arr, start, e
         else:
             return mid, True
 
+    if search_val < arr[mid*skip + axis]:
+        return mid - 1, False
     return mid, False
 
 def search_array_2n_contiguous_subset(search_arr, arr, a, b):
@@ -186,10 +188,12 @@ def search_array_2n_contiguous_subset(search_arr, arr, a, b):
 
     for i in xrange(len(search_arr)):
         if i!= len(search_arr)-1:
-            start = search_array_2n_contiguous_subset_axis_leftmost(search_arr[i], test_array, start, end, skip, i)
-            end = search_array_2n_contiguous_subset_axis_rightmost(search_arr[i], test_array, start, end, skip, i)
+            start = search_array_2n_contiguous_subset_axis_leftmost(search_arr[i], arr, start, end, skip, i)
+            end = search_array_2n_contiguous_subset_axis_rightmost(search_arr[i], arr, start, end, skip, i)
+            if start == end:
+                return (start - 1), False
         else:
-            return search_array_2n_contiguous_subset_axis_first_match(search_arr[i], test_array, start, end, skip, i)
+            return search_array_2n_contiguous_subset_axis_first_match(search_arr[i], arr, start, end, skip, i)
 
 def n_dimensional_midpoint(point1, point2):
     midpoint = []
@@ -214,14 +218,17 @@ def n_dimensional_n_split(min_max_array, n):
         n = n-tiny_ds_per_big_d
 
         more_pts = pixel_blur_d(min_max_array, n)
-        for i in xrange(more_pts):
+        for i in xrange(len(more_pts)/dimensions):
             pt = []
             for j in xrange(dimensions):
                 pt.append(more_pts[i*dimensions+j])
-            duplicate_loc = search_array_2n_contiguous_subset(pt, tiny_ds, 0, tiny_ds_per_big_d)
-            if duplicate_loc == None:
-                divider = search_array_2n_contiguous_subset_axis_leftmost(pt, tiny_ds, 0, tiny_ds_per_big_d, skip, axis)
-                tiny_ds.extend(pt)
+            duplicate_loc, found = search_array_2n_contiguous_subset(pt, tiny_ds, 0, tiny_ds_per_big_d)
+
+            if not found:
+                print("pt ", pt)
+                new_tiny_ds = tiny_ds[0:duplicate_loc*n+n-1]
+                new_tiny_ds.extend(pt)
+                new_tiny_ds.extend(tiny_ds[duplicate_loc*n+n:-1])
             else:
                 if duplicate_loc!=tiny_ds_per_big_d:
                     next_pt = []
@@ -235,6 +242,10 @@ def n_dimensional_n_split(min_max_array, n):
                         next_pt.append(tiny_ds[(duplicate_loc - 1) * dimensions + j])
                     replacement_pt = n_dimensional_midpoint(pt, next_pt)
                     tiny_ds.extend(replacement_pt)
+                print("replacement_pt ", replacement_pt)
+                new_tiny_ds = tiny_ds[0:duplicate_loc * n + n - 1]
+                new_tiny_ds.extend(replacement_pt)
+                new_tiny_ds.extend(tiny_ds[duplicate_loc * n + n:-1])
 
 
         tiny_ds_per_big_d = len(tiny_ds) / (len(min_max_array) / 2)
@@ -266,12 +277,6 @@ if __name__ == "__main__":
     print("arr b:", test_array[2 * b], test_array[2 * b + 1])
 
     #loc = search_array_2n_contiguous_subset([65,85], test_array, 0, 100)
-    loc, found = search_array_2n_contiguous_subset([74,15], test_array, 0, 100)
-    # 65, 5 should return 55, 95
-    # 74,x should return 65, x, not 85, x
-    print("loc:", loc)
-    if found:
-        print("val:", test_array[2*loc], test_array[2*loc+1])
-    else:
-        print("closest:", test_array[2*loc], test_array[2*loc+1])
+    split = n_dimensional_n_split([0,100,0,100], 125)
+
 

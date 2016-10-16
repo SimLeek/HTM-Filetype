@@ -262,9 +262,21 @@ if __name__ == "__main__":
         point_displayer.add_point([x-100, y-100, z-100], [160, int(z), 20])
 '''
 
+    from rand_bin_subset import n_dimensional_n_split
+    split_pts = n_dimensional_n_split([0,200,0,300,0,1000], 1250)
 
+    for i in xrange(len(split_pts)/3):
+        x = split_pts[i*3]
+        y = split_pts[i*3 +1]
+        z = split_pts[i*3 + 2]
 
-    for i in xrange(100000):
+        r = randomSample.randInt(0, 255, 5453476 + i)
+        g = randomSample.randInt(0, 255, 5983279 + i)
+        b = randomSample.randInt(0, 255, 9827312 + i)
+
+        point_displayer.add_point([x, y, z], [r, g, b])
+
+    '''for i in xrange(100000):
 
 
         x = randomSample.randInt(0, 1000, 4237842 + i)
@@ -302,7 +314,7 @@ if __name__ == "__main__":
         #r5 = int((r5)*255.0/2.0)
         #lim octaves->inf gives 1/2^x sum (=1)
         if r> 160:
-            point_displayer.add_point([x,y,z], [r,r,r])
+            point_displayer.add_point([x,y,z], [r,r,r])'''
 
 
 
