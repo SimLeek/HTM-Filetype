@@ -43,6 +43,16 @@ def n_split_points(min,max,n):
 
     return vals
 
+def n_split_points_float(min,max,n):
+    step = (max-min)/(n+1)
+
+    vals=[]
+
+    for i in xrange(1,n+1):
+        vals.append(min+i*step)
+
+    return vals
+
 def get_tiny_d_tip(lengths, i, n_cube_len):
     big_d_length = lengths[i]
     the_tip = big_d_length % n_cube_len
@@ -68,6 +78,25 @@ def stuff_the_ds(min_max_array, lengths, n_cube_len):
 
     return points
 
+def stuff_the_ds_float(min_max_array, lengths, n_cube_len):
+    # n-dimensional space filling algorithm
+    points = []
+    for i in xrange(len(lengths)):
+        offset = (n_cube_len + get_tiny_d_tip(lengths, i, n_cube_len))/2
+        new_points = []
+        if i==0:
+            for j in xrange(int((lengths[i]) / (n_cube_len))):
+                new_points.append(offset + min_max_array[i * 2] + n_cube_len * j)
+        else:
+            for j in xrange(len(points)/i):
+                for k in xrange(int((lengths[i]) / (n_cube_len))):
+                    for l in xrange(i):
+                        new_points.append(points[j * i + l])
+                    new_points.append(offset + min_max_array[i * 2] + n_cube_len * k)
+        points = new_points
+
+    return points
+
 def get_d_lengths(min_max_array):
     lengths = []
 
@@ -81,6 +110,18 @@ def get_d_thickness(lengths):
     for i in xrange(len(lengths)):
         vol = vol * lengths[i]
     return vol
+
+def pixel_blur_d_float(min_max_array, n):
+    if len(min_max_array)%2 != 0 or len(min_max_array)==0:
+        raise IndexError("array is not correct size")
+
+    lengths = get_d_lengths(min_max_array)
+
+    thickness = get_d_thickness(lengths)
+
+    tiny_d_cube_len = (thickness/n)**(1.0/(len(lengths)))
+
+    return stuff_the_ds_float(min_max_array, lengths, tiny_d_cube_len)
 
 def pixel_blur_d(min_max_array, n):
     if len(min_max_array)%2 != 0 or len(min_max_array)==0:
@@ -254,7 +295,54 @@ def n_dimensional_n_split(min_max_array, n):
 
     return tiny_ds
 
+def n_dimensional_n_split_float(min_max_array, n):
 
+    tiny_ds = pixel_blur_d_float(min_max_array, n)
+
+    dimensions = (len(min_max_array)/2)
+
+    tiny_ds_per_big_d=len(tiny_ds) / dimensions
+
+
+    while tiny_ds_per_big_d<n:
+        n = n-tiny_ds_per_big_d
+
+        more_pts = pixel_blur_d_float(min_max_array, n)
+        for i in xrange(len(more_pts)/dimensions):
+            pt = []
+            for j in xrange(dimensions):
+                pt.append(more_pts[i*dimensions+j])
+            duplicate_loc, found = search_array_2n_contiguous_subset(pt, tiny_ds, 0, tiny_ds_per_big_d)
+
+            if not found:
+                print("pt ", pt)
+                new_tiny_ds = tiny_ds[0:duplicate_loc*n+n-1]
+                new_tiny_ds.extend(pt)
+                new_tiny_ds.extend(tiny_ds[duplicate_loc*n+n:-1])
+                tiny_ds = new_tiny_ds
+            else:
+                if duplicate_loc!=tiny_ds_per_big_d:
+                    next_pt = []
+                    for j in xrange(n):
+                        next_pt.append(tiny_ds[(duplicate_loc + 1) * dimensions + j])
+                    replacement_pt = n_dimensional_midpoint(pt, next_pt)
+                    tiny_ds.extend(replacement_pt)
+                else:
+                    next_pt = []
+                    for j in xrange(n):
+                        next_pt.append(tiny_ds[(duplicate_loc - 1) * dimensions + j])
+                    replacement_pt = n_dimensional_midpoint(pt, next_pt)
+                    tiny_ds.extend(replacement_pt)
+                print("replacement_pt ", replacement_pt)
+                new_tiny_ds = tiny_ds[0:duplicate_loc * n + n - 1]
+                new_tiny_ds.extend(replacement_pt)
+                new_tiny_ds.extend(tiny_ds[duplicate_loc * n + n:-1])
+                tiny_ds = new_tiny_ds
+
+
+        tiny_ds_per_big_d = len(tiny_ds) / (len(min_max_array) / 2)
+
+    return tiny_ds
 
 if __name__ == "__main__":
     maximum=9223372036854775807
@@ -279,6 +367,8 @@ if __name__ == "__main__":
     print("arr b:", test_array[2 * b], test_array[2 * b + 1])
 
     #loc = search_array_2n_contiguous_subset([65,85], test_array, 0, 100)
-    split = n_dimensional_n_split([0,100,0,100], 125)
+    split = n_dimensional_n_split_float([0,100,0,100], 137)
+
+    print(split)
 
 

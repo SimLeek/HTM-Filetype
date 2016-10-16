@@ -262,8 +262,8 @@ if __name__ == "__main__":
         point_displayer.add_point([x-100, y-100, z-100], [160, int(z), 20])
 '''
 
-    from rand_bin_subset import n_dimensional_n_split
-    split_pts = n_dimensional_n_split([0,200,0,300,0,1000], 1250)
+    from rand_bin_subset import n_dimensional_n_split_float
+    split_pts = n_dimensional_n_split_float([0,100,0,200, 0, 300], 3457)
 
     for i in xrange(len(split_pts)/3):
         x = split_pts[i*3]
