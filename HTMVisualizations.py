@@ -263,7 +263,7 @@ if __name__ == "__main__":
 '''
 
     from rand_bin_subset import n_dimensional_n_split_float
-    split_pts = n_dimensional_n_split_float([0,100,0,200, 0, 300], 3457)
+    split_pts = n_dimensional_n_split_float([0,10000,0,2, 0, 3], 3457)
 
     for i in xrange(len(split_pts)/3):
         x = split_pts[i*3]

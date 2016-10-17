@@ -266,7 +266,6 @@ def n_dimensional_n_split(min_max_array, n):
             duplicate_loc, found = search_array_2n_contiguous_subset(pt, tiny_ds, 0, tiny_ds_per_big_d)
 
             if not found:
-                print("pt ", pt)
                 new_tiny_ds = tiny_ds[0:duplicate_loc*n+n-1]
                 new_tiny_ds.extend(pt)
                 new_tiny_ds.extend(tiny_ds[duplicate_loc*n+n:-1])
@@ -284,7 +283,6 @@ def n_dimensional_n_split(min_max_array, n):
                         next_pt.append(tiny_ds[(duplicate_loc - 1) * dimensions + j])
                     replacement_pt = n_dimensional_midpoint(pt, next_pt)
                     tiny_ds.extend(replacement_pt)
-                print("replacement_pt ", replacement_pt)
                 new_tiny_ds = tiny_ds[0:duplicate_loc * n + n - 1]
                 new_tiny_ds.extend(replacement_pt)
                 new_tiny_ds.extend(tiny_ds[duplicate_loc * n + n:-1])
@@ -315,7 +313,6 @@ def n_dimensional_n_split_float(min_max_array, n):
             duplicate_loc, found = search_array_2n_contiguous_subset(pt, tiny_ds, 0, tiny_ds_per_big_d)
 
             if not found:
-                print("pt ", pt)
                 new_tiny_ds = tiny_ds[0:duplicate_loc*n+n-1]
                 new_tiny_ds.extend(pt)
                 new_tiny_ds.extend(tiny_ds[duplicate_loc*n+n:-1])
@@ -333,7 +330,6 @@ def n_dimensional_n_split_float(min_max_array, n):
                         next_pt.append(tiny_ds[(duplicate_loc - 1) * dimensions + j])
                     replacement_pt = n_dimensional_midpoint(pt, next_pt)
                     tiny_ds.extend(replacement_pt)
-                print("replacement_pt ", replacement_pt)
                 new_tiny_ds = tiny_ds[0:duplicate_loc * n + n - 1]
                 new_tiny_ds.extend(replacement_pt)
                 new_tiny_ds.extend(tiny_ds[duplicate_loc * n + n:-1])
