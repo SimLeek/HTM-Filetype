@@ -95,7 +95,7 @@ def randomOfArray(array, min_loc, max_loc, seed):
 
     print(buckets)
     for i in xrange(size):
-        index = randInt(buckets[i], buckets[i+1], seed+i)
+        index = rand_int(buckets[i], buckets[i+1], seed+i)
         subset.append(array[index])
 
     #not needed for HTM
@@ -105,7 +105,7 @@ def randomOfArray(array, min_loc, max_loc, seed):
 
 #def randomSampleAt(index, array, size, seed):
 #    bucket_size=len(array)/size
-#    i = randInt(index*bucket_size, (i+1)*bucket_size-1, seed)
+#    i = rand_int(index*bucket_size, (i+1)*bucket_size-1, seed)
 #    return array[i]
 
 def randomSample(input_array, size, seed):

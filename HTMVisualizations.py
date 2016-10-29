@@ -235,8 +235,8 @@ if __name__ == "__main__":
     simp_b = OpenSimplex(seed=656)
 
     '''for i in xrange(100000):
-        x = randomSample.randInt(0, 1000, 4237842 + i)
-        y = randomSample.randInt(0, 1000, 5437474 + i)
+        x = randomSample.rand_int(0, 1000, 4237842 + i)
+        y = randomSample.rand_int(0, 1000, 5437474 + i)
 
         r1 = .0009765625 * (simp_g.noise2d(x=x, y=y))
         r2 = .001953125 * (simp_r.noise2d(x=x / 2.0, y=y / 2.0))
@@ -262,8 +262,8 @@ if __name__ == "__main__":
         point_displayer.add_point([x-100, y-100, z-100], [160, int(z), 20])
 '''
 
-    from rand_bin_subset import n_dimensional_n_split_float
-    split_pts = n_dimensional_n_split_float([0,10000,0,2, 0, 3], 3457)
+    from n_d_point_field import n_dimensional_n_split_float
+    split_pts = n_dimensional_n_split_float([0,1000,0,2, 0, 3], 345)
 
     for i in xrange(len(split_pts)/3):
         x = split_pts[i*3]
@@ -279,9 +279,9 @@ if __name__ == "__main__":
     '''for i in xrange(100000):
 
 
-        x = randomSample.randInt(0, 1000, 4237842 + i)
-        y = randomSample.randInt(0, 1000, 5437474 + i)
-        z = randomSample.randInt(0, 1000, 6345876 + i)
+        x = randomSample.rand_int(0, 1000, 4237842 + i)
+        y = randomSample.rand_int(0, 1000, 5437474 + i)
+        z = randomSample.rand_int(0, 1000, 6345876 + i)
 
         d = math.sqrt((x-500)**2 + (y-500)**2 + (z-500)**2) / 500.0
 
@@ -322,9 +322,9 @@ if __name__ == "__main__":
     line_b = randomSample.randomSample(xrange(500, 1000), 500, 53245643)
 
     for i in range(len(line_a)):
-        r = randomSample.randInt(0, 255, 5453476 + i)
-        g = randomSample.randInt(0, 255, 5983279 + i)
-        b = randomSample.randInt(0, 255, 9827312 + i)
+        r = randomSample.rand_int(0, 255, 5453476 + i)
+        g = randomSample.rand_int(0, 255, 5983279 + i)
+        b = randomSample.rand_int(0, 255, 9827312 + i)
         point_displayer.add_line(line_a[i], line_b[i], [r, g, b])'''
 
 
