@@ -59,17 +59,14 @@ def stuff_the_ds_float(min_max_array, lengths, n_cube_len):
     # n-dimensional space filling algorithm
     points = []
     for index in xrange(len(lengths)):
-        if lengths[index] > n_cube_len:
-            offset = (n_cube_len + get_tiny_d_tip(lengths, index, n_cube_len)) / 2
-        else:
-            offset = (lengths[index]) / 2
+        offset = (n_cube_len + get_tiny_d_tip(lengths, index, n_cube_len)) / 2
         new_points = []
         if index == 0:
             for j in xrange(int((lengths[index]) / n_cube_len)):
                 new_points.append(offset + min_max_array[index * 2] + n_cube_len * j)
         else:
             for j in xrange(len(points) / index):
-                for k in xrange(int(math.ceil((lengths[index]) / n_cube_len))):
+                for k in xrange(int(lengths[index] / n_cube_len)):
                     for l in xrange(index):
                         new_points.append(points[j * index + l])
                     new_points.append(offset + min_max_array[index * 2] + n_cube_len * k)
@@ -102,11 +99,41 @@ def pixel_blur_d_float(min_max_array, n):
     lengths = get_d_lengths(min_max_array)
 
     thickness = get_d_thickness(lengths)
-
     tiny_d_cube_len = (thickness / n) ** (1.0 / (len(lengths)))
+    index = 0
+    deleted_indices = []
+    deleted_lengths = []
+    deleted_min_vals = []
+    while index in xrange(len(lengths)):
+        if lengths[index] < tiny_d_cube_len:
+            deleted_indices.append(index+len(deleted_indices))
+            deleted_lengths.append(lengths[index])
+            del lengths[index]
+            deleted_min_vals.append(min_max_array[index * 2])
+            del min_max_array[index * 2]
+            del min_max_array[index * 2]
+            thickness = get_d_thickness(lengths)
+            tiny_d_cube_len = (thickness / n) ** (1.0 / (len(lengths)))
+            index = 0
+        else:
+            index += 1
+    #next:store dimensions and add back using middles
 
-    return stuff_the_ds_float(min_max_array, lengths, tiny_d_cube_len)
+    stuffed_ds = stuff_the_ds_float(min_max_array, lengths, tiny_d_cube_len)
 
+    for index in xrange(len(deleted_indices)):
+        new_ds = []
+        d_index = deleted_indices[index]
+        pos = deleted_lengths[index] / 2.0 + deleted_min_vals[index]
+        prev_num_ds = len(lengths) + index
+        for j in xrange(len(stuffed_ds)/prev_num_ds):
+            new_ds.extend(stuffed_ds[prev_num_ds*j:prev_num_ds*j+d_index])
+            new_ds.append(pos)
+            new_ds.extend(stuffed_ds[prev_num_ds * j + d_index : prev_num_ds * j])
+
+        stuffed_ds = new_ds
+
+    return stuffed_ds
 
 def pixel_blur_d(min_max_array, n):
     if len(min_max_array) % 2 != 0 or len(min_max_array) == 0:
@@ -328,7 +355,7 @@ def n_dimensional_n_split_float(min_max_array, n):
 
 if __name__ == "__main__":
 
-    field = pixel_blur_d_float([-27, 37, 0, 500,0,8], 10)
+    field = pixel_blur_d_float([-27, 37, 0, 500,0,8, 0, 2], 10)
     print(field)
     '''maximum = 9223372036854775807
     minimum = 0
