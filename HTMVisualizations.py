@@ -217,7 +217,7 @@ class vtk_points:
 
         #light brown = .6,.6,.4
         # light brown = .2,.2,.1
-        renderer.SetBackground(.6,.6,.4)
+        renderer.SetBackground(.1,.2,.4)
 
         renderWindow.Render()
         renderWindowInteractor.Start()
@@ -263,16 +263,21 @@ if __name__ == "__main__":
 '''
 
     from n_d_point_field import n_dimensional_n_split_float
-    split_pts = n_dimensional_n_split_float([0,1000,0,2, 0, 3], 345)
+    split_pts = n_dimensional_n_split_float([0,1000,0,500, 0, 200], 345)
+
+    print(split_pts)
 
     for i in xrange(len(split_pts)/3):
         x = split_pts[i*3]
         y = split_pts[i*3 +1]
         z = split_pts[i*3 + 2]
 
-        r = randomSample.randInt(0, 255, 5453476 + i)
-        g = randomSample.randInt(0, 255, 5983279 + i)
-        b = randomSample.randInt(0, 255, 9827312 + i)
+        col_r = (i % (127)) - 127*.4
+        col_b = (i % (127)) - 127 * .2
+
+        r = int(255*.4 + col_r)
+        g = int(255*.4 + col_r)
+        b = int(255*.2 + col_b)
 
         point_displayer.add_point([x, y, z], [r, g, b])
 

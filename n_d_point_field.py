@@ -129,7 +129,7 @@ def pixel_blur_d_float(min_max_array, n):
         for j in xrange(len(stuffed_ds)/prev_num_ds):
             new_ds.extend(stuffed_ds[prev_num_ds*j:prev_num_ds*j+d_index])
             new_ds.append(pos)
-            new_ds.extend(stuffed_ds[prev_num_ds * j + d_index : prev_num_ds * j])
+            new_ds.extend(stuffed_ds[prev_num_ds * j + d_index : prev_num_ds * (j+1)])
 
         stuffed_ds = new_ds
 
