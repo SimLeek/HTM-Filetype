@@ -296,7 +296,7 @@ def n_dimensional_midpoint(point1, point2):
     return midpoint
 
 
-def n_dimensional_n_split(min_max_array, n):
+def n_dimensional_n_split(min_max_array, n, initializing_object = None):
     tiny_ds = pixel_blur_d(min_max_array, n)
 
     dimensions =  len(min_max_array)/2
@@ -308,12 +308,12 @@ def n_dimensional_n_split(min_max_array, n):
     p = index.Property()
     p.dimension = dimensions
 
-    idx = index.Index(properties=p)
+    idx = index.Index(properties=p, interleaved=False)
 
     for i in xrange(tiny_ds_per_big_d):
         pt = [tiny_ds[i*dimensions +x] for x in range(dimensions)]
         pt.extend(pt)
-        idx.insert(i, tuple(pt), obj=i)
+        idx.insert(i, tuple(pt), obj=initializing_object)
 
     while tiny_ds_per_big_d < n:
         r = n - tiny_ds_per_big_d
@@ -325,7 +325,7 @@ def n_dimensional_n_split(min_max_array, n):
             if len(list(idx.intersection(tuple(pt), objects=True)))==0:
                 idx.insert(tiny_ds_per_big_d+index,
                            tuple(pt),
-                           obj=tiny_ds_per_big_d+index)
+                           obj=initializing_object)
             else:
                 neighbors = list(idx.nearest(tuple(pt), 2, objects=True))
                 n1 = neighbors[0].bbox
@@ -335,12 +335,12 @@ def n_dimensional_n_split(min_max_array, n):
                     new_pt.append(int((n1[a]+n2[a])/2))
                 idx.insert(tiny_ds_per_big_d+index,
                            tuple(new_pt),
-                           obj=tiny_ds_per_big_d+index)
+                           obj=initializing_object)
         tiny_ds_per_big_d = tiny_ds_per_big_d + len(more_pts)/dimensions
 
     return idx
 
-def n_dimensional_n_split_float(min_max_array, n):
+def n_dimensional_n_split_float(min_max_array, n, initializing_object=None):
     tiny_ds = pixel_blur_d_float(min_max_array, n)
 
     dimensions =  len(min_max_array)/2
@@ -352,12 +352,12 @@ def n_dimensional_n_split_float(min_max_array, n):
     p = index.Property()
     p.dimension = dimensions
 
-    idx = index.Index(properties=p)
+    idx = index.Index(properties=p, interleaved=False)
 
     for i in xrange(tiny_ds_per_big_d):
         pt = [tiny_ds[i*dimensions +x] for x in range(dimensions)]
         pt.extend(pt)
-        idx.insert(i, tuple(pt), obj=i)
+        idx.insert(i, tuple(pt), obj=initializing_object)
 
     while tiny_ds_per_big_d < n:
         r = n - tiny_ds_per_big_d
@@ -369,7 +369,7 @@ def n_dimensional_n_split_float(min_max_array, n):
             if len(list(idx.intersection(tuple(pt), objects=True)))==0:
                 idx.insert(tiny_ds_per_big_d+index,
                            tuple(pt),
-                           obj=tiny_ds_per_big_d+index)
+                           obj=initializing_object)
             else:
                 neighbors = list(idx.nearest(tuple(pt), 2, objects=True))
                 n1 = neighbors[0].bbox
@@ -379,7 +379,7 @@ def n_dimensional_n_split_float(min_max_array, n):
                     new_pt.append((n1[a]+n2[a])/2.0)
                 idx.insert(tiny_ds_per_big_d+index,
                            tuple(new_pt),
-                           obj=tiny_ds_per_big_d+index)
+                           obj=initializing_object)
         tiny_ds_per_big_d = tiny_ds_per_big_d + len(more_pts)/dimensions
 
     return idx
