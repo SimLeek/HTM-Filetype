@@ -1,6 +1,7 @@
 #import HTMNeuron
 import vtk
 
+
 global_keyDic = None
 
 global_interactor_parent = None
@@ -217,7 +218,11 @@ class vtk_points:
 
         #light brown = .6,.6,.4
         # light brown = .2,.2,.1
-        renderer.SetBackground(.1,.2,.4)
+        #dusk = .05, .05, .1
+        #calm blue sky = .1, .2, .4
+        #day blue sky = .2, .4, .8
+        #bright blue sky = .6, .8, 1.0 (bg attention activation)
+        renderer.SetBackground(.6, .8, 1.0)
 
         renderWindow.Render()
         renderWindowInteractor.Start()
@@ -263,14 +268,15 @@ if __name__ == "__main__":
 '''
 
     from n_d_point_field import n_dimensional_n_split_float
-    split_pts = n_dimensional_n_split_float([0,1000,0,500, 0, 200], 345)
+    split_pts = n_dimensional_n_split_float([0,400, 0, 300, 0, 350], 8320)
+    points = list(split_pts.intersection((0, 0, 0, 400, 300, 350), objects=True))
 
     print(split_pts)
 
-    for i in xrange(len(split_pts)/3):
-        x = split_pts[i*3]
-        y = split_pts[i*3 +1]
-        z = split_pts[i*3 + 2]
+    for i in xrange(len(points)):
+        x = points[i].bbox[0]
+        y = points[i].bbox[1]
+        z = points[i].bbox[2]
 
         col_r = (i % (127)) - 127*.4
         col_b = (i % (127)) - 127 * .2

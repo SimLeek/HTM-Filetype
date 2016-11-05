@@ -17,7 +17,7 @@ if __name__ == "__main__":
                       split[i * 5], split[i * 5 + 1], split[i * 5 + 2], split[i * 5 + 3], split[i * 5 + 4]),
                    obj = i)
 
-    points = (list(idx.intersection((0,0,0,0,0,200,200,255,255,255), objects=True )))
+    points = ((idx.intersection((0,0,0,0,0,200,200,255,255,255), objects=True )))
 
     print([(point.id, point.bbox) for point in points])
 

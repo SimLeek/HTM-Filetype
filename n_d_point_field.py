@@ -97,6 +97,7 @@ def pixel_blur_d_float(min_max_array, n):
         raise IndexError("array is not correct size")
 
     lengths = get_d_lengths(min_max_array)
+    min_max_copy = min_max_array[:]
 
     thickness = get_d_thickness(lengths)
     tiny_d_cube_len = (thickness / n) ** (1.0 / (len(lengths)))
@@ -109,9 +110,9 @@ def pixel_blur_d_float(min_max_array, n):
             deleted_indices.append(index+len(deleted_indices))
             deleted_lengths.append(lengths[index])
             del lengths[index]
-            deleted_min_vals.append(min_max_array[index * 2])
-            del min_max_array[index * 2]
-            del min_max_array[index * 2]
+            deleted_min_vals.append(min_max_copy[index * 2])
+            del min_max_copy[index * 2]
+            del min_max_copy[index * 2]
             thickness = get_d_thickness(lengths)
             tiny_d_cube_len = (thickness / n) ** (1.0 / (len(lengths)))
             index = 0
@@ -119,7 +120,7 @@ def pixel_blur_d_float(min_max_array, n):
             index += 1
     #next:store dimensions and add back using middles
 
-    stuffed_ds = stuff_the_ds_float(min_max_array, lengths, tiny_d_cube_len)
+    stuffed_ds = stuff_the_ds_float(min_max_copy, lengths, tiny_d_cube_len)
 
     for index in xrange(len(deleted_indices)):
         new_ds = []
@@ -140,12 +141,44 @@ def pixel_blur_d(min_max_array, n):
         raise IndexError("array is not correct size")
 
     lengths = get_d_lengths(min_max_array)
+    min_max_copy = min_max_array[:]
 
     thickness = get_d_thickness(lengths)
 
     tiny_d_cube_len = int(math.ceil((thickness / n) ** (1.0 / (len(lengths)))))
+    index = 0
+    deleted_indices = []
+    deleted_lengths = []
+    deleted_min_vals = []
+    while index in xrange(len(lengths)):
+        if lengths[index] < tiny_d_cube_len:
+            deleted_indices.append(index + len(deleted_indices))
+            deleted_lengths.append(lengths[index])
+            del lengths[index]
+            deleted_min_vals.append(min_max_copy[index * 2])
+            del min_max_copy[index * 2]
+            del min_max_copy[index * 2]
+            thickness = get_d_thickness(lengths)
+            tiny_d_cube_len = int(math.ceil((thickness / n) ** (1.0 / (len(lengths)))))
+            index = 0
+        else:
+            index += 1
 
-    return stuff_the_ds(min_max_array, lengths, tiny_d_cube_len)
+    stuffed_ds = stuff_the_ds(min_max_copy, lengths, tiny_d_cube_len)
+
+    for index in xrange(len(deleted_indices)):
+        new_ds = []
+        d_index = deleted_indices[index]
+        pos = deleted_lengths[index] / 2 + deleted_min_vals[index]
+        prev_num_ds = len(lengths) + index
+        for j in xrange(len(stuffed_ds)/prev_num_ds):
+            new_ds.extend(stuffed_ds[prev_num_ds*j:prev_num_ds*j+d_index])
+            new_ds.append(pos)
+            new_ds.extend(stuffed_ds[prev_num_ds * j + d_index : prev_num_ds * (j+1)])
+
+        stuffed_ds = new_ds
+
+    return stuffed_ds
 
 
 def unknown_length_sorted_array_2n_search_1(search_val, arr, pos, array_div=1):
@@ -266,97 +299,96 @@ def n_dimensional_midpoint(point1, point2):
 def n_dimensional_n_split(min_max_array, n):
     tiny_ds = pixel_blur_d(min_max_array, n)
 
-    dimensions = (len(min_max_array) / 2)
+    dimensions =  len(min_max_array)/2
 
-    tiny_ds_per_big_d = len(tiny_ds) / dimensions
+    tiny_ds_per_big_d = len(tiny_ds)/dimensions
+
+    from rtree import index
+
+    p = index.Property()
+    p.dimension = dimensions
+
+    idx = index.Index(properties=p)
+
+    for i in xrange(tiny_ds_per_big_d):
+        pt = [tiny_ds[i*dimensions +x] for x in range(dimensions)]
+        pt.extend(pt)
+        idx.insert(i, tuple(pt), obj=i)
 
     while tiny_ds_per_big_d < n:
-        n -= tiny_ds_per_big_d
+        r = n - tiny_ds_per_big_d
 
-        more_pts = pixel_blur_d(min_max_array, n)
+        more_pts = pixel_blur_d(min_max_array, r)
         for index in xrange(len(more_pts) / dimensions):
-            pt = []
-            for j in xrange(dimensions):
-                pt.append(more_pts[index * dimensions + j])
-            duplicate_loc, found = search_array_2n_contiguous_subset(pt, tiny_ds, 0, tiny_ds_per_big_d)
-
-            if not found:
-                new_tiny_ds = tiny_ds[0:duplicate_loc * n + n - 1]
-                new_tiny_ds.extend(pt)
-                new_tiny_ds.extend(tiny_ds[duplicate_loc * n + n:-1])
-                tiny_ds = new_tiny_ds
+            pt = [more_pts[index * dimensions + x] for x in range(dimensions)]
+            pt.extend(pt)
+            if len(list(idx.intersection(tuple(pt), objects=True)))==0:
+                idx.insert(tiny_ds_per_big_d+index,
+                           tuple(pt),
+                           obj=tiny_ds_per_big_d+index)
             else:
-                if duplicate_loc != tiny_ds_per_big_d:
-                    next_pt = []
-                    for j in xrange(n):
-                        next_pt.append(tiny_ds[(duplicate_loc + 1) * dimensions + j])
-                    replacement_pt = n_dimensional_midpoint(pt, next_pt)
-                    tiny_ds.extend(replacement_pt)
-                else:
-                    next_pt = []
-                    for j in xrange(n):
-                        next_pt.append(tiny_ds[(duplicate_loc - 1) * dimensions + j])
-                    replacement_pt = n_dimensional_midpoint(pt, next_pt)
-                    tiny_ds.extend(replacement_pt)
-                new_tiny_ds = tiny_ds[0:duplicate_loc * n + n - 1]
-                new_tiny_ds.extend(replacement_pt)
-                new_tiny_ds.extend(tiny_ds[duplicate_loc * n + n:-1])
-                tiny_ds = new_tiny_ds
+                neighbors = list(idx.nearest(tuple(pt), 2, objects=True))
+                n1 = neighbors[0].bbox
+                n2 = neighbors[1].bbox
+                new_pt = []
+                for a in xrange(len(n1)):
+                    new_pt.append(int((n1[a]+n2[a])/2))
+                idx.insert(tiny_ds_per_big_d+index,
+                           tuple(new_pt),
+                           obj=tiny_ds_per_big_d+index)
+        tiny_ds_per_big_d = tiny_ds_per_big_d + len(more_pts)/dimensions
 
-        tiny_ds_per_big_d = len(tiny_ds) / (len(min_max_array) / 2)
-
-    return tiny_ds
-
+    return idx
 
 def n_dimensional_n_split_float(min_max_array, n):
     tiny_ds = pixel_blur_d_float(min_max_array, n)
 
-    dimensions = (len(min_max_array) / 2)
+    dimensions =  len(min_max_array)/2
 
-    tiny_ds_per_big_d = len(tiny_ds) / dimensions
+    tiny_ds_per_big_d = len(tiny_ds)/dimensions
+
+    from rtree import index
+
+    p = index.Property()
+    p.dimension = dimensions
+
+    idx = index.Index(properties=p)
+
+    for i in xrange(tiny_ds_per_big_d):
+        pt = [tiny_ds[i*dimensions +x] for x in range(dimensions)]
+        pt.extend(pt)
+        idx.insert(i, tuple(pt), obj=i)
 
     while tiny_ds_per_big_d < n:
-        n -= tiny_ds_per_big_d
+        r = n - tiny_ds_per_big_d
 
-        more_pts = pixel_blur_d_float(min_max_array, n)
+        more_pts = pixel_blur_d_float(min_max_array, r)
         for index in xrange(len(more_pts) / dimensions):
-            pt = []
-            for j in xrange(dimensions):
-                pt.append(more_pts[index * dimensions + j])
-            duplicate_loc, found = search_array_2n_contiguous_subset(pt, tiny_ds, 0, tiny_ds_per_big_d)
-
-            if not found:
-                new_tiny_ds = tiny_ds[0:duplicate_loc * n + n - 1]
-                new_tiny_ds.extend(pt)
-                new_tiny_ds.extend(tiny_ds[duplicate_loc * n + n:-1])
-                tiny_ds = new_tiny_ds
+            pt = [more_pts[index * dimensions + x] for x in range(dimensions)]
+            pt.extend(pt)
+            if len(list(idx.intersection(tuple(pt), objects=True)))==0:
+                idx.insert(tiny_ds_per_big_d+index,
+                           tuple(pt),
+                           obj=tiny_ds_per_big_d+index)
             else:
-                if duplicate_loc != tiny_ds_per_big_d:
-                    next_pt = []
-                    for j in xrange(n):
-                        next_pt.append(tiny_ds[(duplicate_loc + 1) * dimensions + j])
-                    replacement_pt = n_dimensional_midpoint(pt, next_pt)
-                    tiny_ds.extend(replacement_pt)
-                else:
-                    next_pt = []
-                    for j in xrange(n):
-                        next_pt.append(tiny_ds[(duplicate_loc - 1) * dimensions + j])
-                    replacement_pt = n_dimensional_midpoint(pt, next_pt)
-                    tiny_ds.extend(replacement_pt)
-                new_tiny_ds = tiny_ds[0:duplicate_loc * n + n - 1]
-                new_tiny_ds.extend(replacement_pt)
-                new_tiny_ds.extend(tiny_ds[duplicate_loc * n + n:-1])
-                tiny_ds = new_tiny_ds
+                neighbors = list(idx.nearest(tuple(pt), 2, objects=True))
+                n1 = neighbors[0].bbox
+                n2 = neighbors[1].bbox
+                new_pt = []
+                for a in xrange(len(n1)):
+                    new_pt.append((n1[a]+n2[a])/2.0)
+                idx.insert(tiny_ds_per_big_d+index,
+                           tuple(new_pt),
+                           obj=tiny_ds_per_big_d+index)
+        tiny_ds_per_big_d = tiny_ds_per_big_d + len(more_pts)/dimensions
 
-        tiny_ds_per_big_d = len(tiny_ds) / (len(min_max_array) / 2)
-
-    return tiny_ds
-
+    return idx
 
 if __name__ == "__main__":
 
-    field = pixel_blur_d_float([-27, 37, 0, 500,0,8, 0, 2], 10)
-    print(field)
+    field = n_dimensional_n_split_float([-27, 37, 0, 500,0,8, 0, 2], 10000)
+    points = list(field.intersection((-27, 0,0, 0, 37, 500, 8, 2), objects=True))
+    print([(point.id, point.bbox) for point in points])
     '''maximum = 9223372036854775807
     minimum = 0
 
