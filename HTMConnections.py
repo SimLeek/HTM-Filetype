@@ -172,7 +172,7 @@ class Connections(object):
         self.maxSynapsesPerSegment = maxSynapsesPerSegment
 
         if locationType=="int":
-            self._cellLocations = n_dimensional_n_split(bbox, numCells, CellData())
+            self._cellLocations = n_dimensional_n_split(bbox, numCells)
         elif locationType=="float":
             self._cellLocations = n_dimensional_n_split_float(bbox, numCells, CellData())
 
@@ -180,7 +180,8 @@ class Connections(object):
 
         # check if defaultdict is useful here (need dict and not set dui to calling via UIDs)
         # keeping dict in addition to r-tree because O(1) access/storage vs O(log_2(n))
-        self._cells = dict([(point.id, point.object) for point in points])
+        #todo: takes too long!
+        self._cells = dict([(point.id, CellData()) for point in points])
 
         self._synapsesForPresynapticCell = defaultdict(set)
         self._segmentForUID = dict()
@@ -208,7 +209,7 @@ class Connections(object):
         Segment objects representing segments on the given cell.
         """
 
-        return self._cells[cell]
+        return self._cells[cell]._segments
 
     def synapsesForSegment(self, segment):
         """ Returns the synapses on a segment.
@@ -287,7 +288,7 @@ class Connections(object):
 
         return minSynapse
 
-    def segmentForFlatIdx(self, flatIdx):
+    def segmentForUID(self, flatIdx):
         """ Get the segment with the specified flatIdx.
         @param flatIdx (int) The segment's flattened dict index.
         @return (Segment) segment object
@@ -363,7 +364,7 @@ class Connections(object):
             UID = self._freeUIDs.pop()
         else:
             UID = self._nextUID
-            self._segmentForUID.append(None)
+            self._segmentForUID[UID] = None
             self._nextUID += 1
 
         ordinal = self._nextSegmentOrdinal

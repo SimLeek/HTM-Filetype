@@ -312,7 +312,7 @@ def n_dimensional_n_split(min_max_array, n, initializing_object = None):
 
     for i in xrange(tiny_ds_per_big_d):
         pt = [tiny_ds[i*dimensions +x] for x in range(dimensions)]
-        pt.extend(pt)
+        pt = [pt[j//2] for j in range(len(pt)*2)]
         idx.insert(i, tuple(pt), obj=initializing_object)
 
     while tiny_ds_per_big_d < n:
