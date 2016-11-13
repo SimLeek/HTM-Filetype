@@ -1,4 +1,4 @@
-namespace buffers.connectiongroup
+namespace buffers.connectiongroup;
 
 enum LocationType:byte{
     intType = 1,

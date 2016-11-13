@@ -11,24 +11,24 @@ table IntPos{
 union Pos {FloatPos, IntPos}
 
 table Synapse{
-    presynapticCellUID:ulong (required);
+    presynapticCellUID:ulong;
     permanence:float;
     ///used in cases when cell is lost
     terminalPosition:Pos;
-    overlaps:[uint]
+    overlaps:[uint];
 }
 
 table Segment{
-    synapses:[synapse];
+    synapses:[Synapse] (required);
     lastUsedIteration:uint;
 }
 
 table Cell {
     position:Pos;
     lastUsedIteration:uint;
-    UID:ulong (required);
-    connectionsUID:ulong (required);
-    segments:[Segment];
+    UID:ulong;
+    connectionsUID:ulong;
+    segments:[Segment] (required);
 }
 
 root_type Cell;

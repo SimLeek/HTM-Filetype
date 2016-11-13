@@ -487,7 +487,7 @@ class Connections(object):
         return segment.cell + (segment._ordinal / float(self._nextSegmentOrdinal))
 
     def write(self, proto):
-        """ Writes serialized data from cells to proto objects
+        """ Writes serialized data from group to flatbuffers
 
         @param proto (DynamicStructBuilder) Proto object"""
 
