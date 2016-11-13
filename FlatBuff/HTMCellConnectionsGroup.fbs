@@ -1,0 +1,28 @@
+namespace buffers.connectiongroup
+
+enum LocationType:byte{
+    intType = 1,
+    floatType
+}
+
+table FloatBBox{
+    coordinates:[float];
+}
+
+table IntBBox{
+    coordinates:[int];
+}
+
+union BBox {FloatBBox, IntBBox}
+
+table ConnectionGroup{
+    UID:ulong;
+    numCells:uint;
+    maxSegmentsPerCell:uint = 255;
+    maxSynapsesPerSegment:uint = 255;
+    bbox:BBox;
+}
+
+root_type ConnectionGroup;
+file_identifier "CNGP";
+file_extension "ncn";

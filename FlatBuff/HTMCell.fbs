@@ -1,0 +1,36 @@
+namespace buffers.neuron;
+
+table FloatPos{
+    coordinates:[float];
+}
+
+table IntPos{
+    coordinates:[float];
+}
+
+union Pos {FloatPos, IntPos}
+
+table Synapse{
+    presynapticCellUID:ulong (required);
+    permanence:float;
+    ///used in cases when cell is lost
+    terminalPosition:Pos;
+    overlaps:[uint]
+}
+
+table Segment{
+    synapses:[synapse];
+    lastUsedIteration:uint;
+}
+
+table Cell {
+    position:Pos;
+    lastUsedIteration:uint;
+    UID:ulong (required);
+    connectionsUID:ulong (required);
+    segments:[Segment];
+}
+
+root_type Cell;
+file_identifier "NRCN";
+file_extension "nrn";

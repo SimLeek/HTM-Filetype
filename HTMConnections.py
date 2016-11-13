@@ -161,7 +161,8 @@ class Connections(object):
                  bbox,
                  maxSegmentsPerCell = 255,
                  maxSynapsesPerSegment = 255,
-                 locationType = "int"):
+                 locationType = "int",
+                 UID=0):
         """ @param numCells (int) Number of cells in collection """
 
         #save member variables
@@ -523,3 +524,6 @@ class Connections(object):
         connections = cls(len(protoCell),
                       proto.maxSegmentsPerCell,
                       proto.maxSynapsesPerSegment)
+
+class Cluster(object):
+    """Class to hold data about connected groups of neurons with different properties."""

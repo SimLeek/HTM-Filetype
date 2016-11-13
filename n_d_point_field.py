@@ -308,7 +308,7 @@ def n_dimensional_n_split(min_max_array, n, initializing_object = None):
     p = index.Property()
     p.dimension = dimensions
 
-    idx = index.Index(properties=p, interleaved=False)
+    idx = index.Index(properties=p, interleaved=True)
 
     for i in xrange(tiny_ds_per_big_d):
         pt = [tiny_ds[i*dimensions +x] for x in range(dimensions)]
@@ -351,12 +351,12 @@ def n_dimensional_n_split_float(min_max_array, n, initializing_object=None):
 
     p = index.Property()
     p.dimension = dimensions
+    #p.interleaved=True
 
-    idx = index.Index(properties=p, interleaved=False)
+    idx = index.Index(properties=p, interleaved=True)
 
     for i in xrange(tiny_ds_per_big_d):
         pt = [tiny_ds[i*dimensions +x] for x in range(dimensions)]
-        pt.extend(pt)
         idx.insert(i, tuple(pt), obj=initializing_object)
 
     while tiny_ds_per_big_d < n:
@@ -365,7 +365,6 @@ def n_dimensional_n_split_float(min_max_array, n, initializing_object=None):
         more_pts = pixel_blur_d_float(min_max_array, r)
         for index in xrange(len(more_pts) / dimensions):
             pt = [more_pts[index * dimensions + x] for x in range(dimensions)]
-            pt.extend(pt)
             if len(list(idx.intersection(tuple(pt), objects=True)))==0:
                 idx.insert(tiny_ds_per_big_d+index,
                            tuple(pt),
