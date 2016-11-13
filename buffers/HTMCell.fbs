@@ -1,4 +1,4 @@
-namespace buffers.neuron;
+namespace neuron;
 
 table FloatPos{
     coordinates:[float];
