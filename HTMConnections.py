@@ -22,7 +22,11 @@
 from bisect import bisect_left
 from collections import defaultdict
 from n_d_point_field import n_dimensional_n_split, n_dimensional_n_split_float
-
+import flatbuffers
+import buffers.connectiongroup.ConnectionGroup as ConnectionGroup
+import buffers.connectiongroup.BBox as BBox
+import buffers.connectiongroup.FloatBBox as FloatBBox
+import buffers.connectiongroup.IntBBox as IntBBox
 #note: generate UIDs as randint(min_int,max_int) and check if in hash_table
 
 EPSILON = 0.00001 #constant error threshold
@@ -162,7 +166,8 @@ class Connections(object):
                  maxSegmentsPerCell = 255,
                  maxSynapsesPerSegment = 255,
                  locationType = "int",
-                 UID=0):
+                 UID=0,
+                 startWithNoNeurons=False):
         """ @param numCells (int) Number of cells in collection """
 
         #save member variables
@@ -177,16 +182,20 @@ class Connections(object):
         elif locationType=="float":
             self._cellLocations = n_dimensional_n_split_float(bbox, numCells, CellData())
 
-        points = ((self._cellLocations.intersection(bbox, objects=True)))
+        if not startWithNoNeurons:
+            points = ((self._cellLocations.intersection(bbox, objects=True)))
 
-        # check if defaultdict is useful here (need dict and not set dui to calling via UIDs)
-        # keeping dict in addition to r-tree because O(1) access/storage vs O(log_2(n))
-        #todo: takes too long!
-        self._cells = dict([(point.id, CellData()) for point in points])
+            # check if defaultdict is useful here (need dict and not set dui to calling via UIDs)
+            # keeping dict in addition to r-tree because O(1) access/storage vs O(log_2(n))
+            #todo: takes too long!
+            self._cells = dict([(point.id, CellData()) for point in points])
+            self.cellUIDcounter = numCells
+        else:
+            self._cells = dict()
+            self.cellUIDcounter = 0
 
         self._synapsesForPresynapticCell = defaultdict(set)
         self._segmentForUID = dict()
-        self.cellUIDcounter = numCells
 
         self._numSynapses = 0
         self._freeUIDs = []
@@ -514,16 +523,48 @@ class Connections(object):
                 proto.numCells = self.numCells
 
     @classmethod
-    def read(cls, proto):
+    def readFromFile(cls, filename):
         """ Reads deserialized data from proto object
         @param proto (DynamicStructBuilder) Proto object
         @return (Connections) Connections instance
         """
         # pylint: disable=W0212
-        protoCell = proto.cell
-        connections = cls(len(protoCell),
-                      proto.maxSegmentsPerCell,
-                      proto.maxSynapsesPerSegment)
+
+        buf = open(filename, 'rb').read()
+        buf = bytearray(buf)
+        connection_group = ConnectionGroup.ConnectionGroup.GetRootAsConnectionGroup(buf,0)
+
+        bbox = None
+        locationType = None
+
+        if connection_group.BboxType() == BBox.BBox.IntBBox:
+            locationType = "int"
+            bbox_union = IntBBox.IntBBox()
+            bbox_union.Init(connection_group.Bbox().Bytes, connection_group.Bbox().Pos)
+            bbox = []
+
+            for i in xrange(bbox_union.CoordinatesLength()):
+                bbox.append(bbox_union.Coordinates(i))
+
+        elif connection_group.BboxType() == BBox.BBox.FloatBBox:
+            locationType = "float"
+            bbox_union = FloatBBox.FloatBBox()
+            bbox_union.Init(connection_group.Bbox().Bytes, connection_group.Bbox().Pos)
+            bbox = []
+
+            for i in xrange(bbox_union.CoordinatesLength()):
+                bbox.append(bbox_union.Coordinates(i))
+
+        me = cls(
+             connection_group.NumCells(),
+             bbox,
+             connection_group.MaxSegmentsPerCell(),
+             connection_group.MaxSynapsesPerSegment(),
+             locationType,
+             connection_group.UID(),
+             startWithNoNeurons=True)
+
+        return me
 
 class Cluster(object):
     """Class to hold data about connected groups of neurons with different properties."""
