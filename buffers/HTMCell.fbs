@@ -13,8 +13,6 @@ union Pos {FloatPos, IntPos}
 table Synapse{
     presynapticCellUID:ulong;
     permanence:float;
-    ///used in cases when cell is lost
-    terminalPosition:Pos;
     overlaps:[uint];
 }
 

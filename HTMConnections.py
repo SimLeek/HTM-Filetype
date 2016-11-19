@@ -21,12 +21,21 @@
 
 from bisect import bisect_left
 from collections import defaultdict
-from n_d_point_field import n_dimensional_n_split, n_dimensional_n_split_float
+
 import flatbuffers
-import buffers.connectiongroup.ConnectionGroup as ConnectionGroup
+
 import buffers.connectiongroup.BBox as BBox
+import buffers.connectiongroup.ConnectionGroup as ConnectionGroup
 import buffers.connectiongroup.FloatBBox as FloatBBox
 import buffers.connectiongroup.IntBBox as IntBBox
+import buffers.neuron.Cell as neuronCell
+import buffers.neuron.FloatPos as FloatPos
+import buffers.neuron.IntPos as IntPos
+import buffers.neuron.Pos as posType
+import buffers.neuron.Segment as CellSegment
+import buffers.neuron.Synapse as CellSynapse
+from n_d_point_field import n_dimensional_n_split, n_dimensional_n_split_float
+
 #note: generate UIDs as randint(min_int,max_int) and check if in hash_table
 
 EPSILON = 0.00001 #constant error threshold
@@ -100,10 +109,11 @@ class Synapse(object):
 class CellData(object):
     """ Class containing cell information. Internal to the connections. """
 
-    __slots__ = ["_segments", "_lastUsedIteration"]
+    __slots__ = ["_segments", "_bbox", "_lastUsedIteration"]
 
-    def __init__(self, lastUsedIteration = 0):
+    def __init__(self, bbox, lastUsedIteration=0):
         self._segments = []
+        self._bbox = bbox
         self._lastUsedIteration = lastUsedIteration
 
     def write(self, proto, UID, loc):
@@ -177,20 +187,27 @@ class Connections(object):
         self.maxSegmentsPerCell = maxSegmentsPerCell
         self.maxSynapsesPerSegment = maxSynapsesPerSegment
 
-        if locationType=="int":
-            self._cellLocations = n_dimensional_n_split(bbox, numCells)
-        elif locationType=="float":
-            self._cellLocations = n_dimensional_n_split_float(bbox, numCells, CellData())
+        self.locationType = locationType
+        self.UID = UID
+        self.bbox = bbox
 
         if not startWithNoNeurons:
+            if locationType == "int":
+                self._cellLocations = n_dimensional_n_split(bbox, numCells)
+            elif locationType == "float":
+                self._cellLocations = n_dimensional_n_split_float(bbox, numCells, CellData())
+
             points = ((self._cellLocations.intersection(bbox, objects=True)))
 
             # check if defaultdict is useful here (need dict and not set dui to calling via UIDs)
             # keeping dict in addition to r-tree because O(1) access/storage vs O(log_2(n))
             #todo: takes too long!
-            self._cells = dict([(point.id, CellData()) for point in points])
+            self._cells = dict([(point.id, CellData(point.bbox)) for point in points])
             self.cellUIDcounter = numCells
         else:
+
+            self._cellLocations = n_dimensional_n_split(bbox, 0)
+
             self._cells = dict()
             self.cellUIDcounter = 0
 
@@ -199,6 +216,7 @@ class Connections(object):
 
         self._numSynapses = 0
         self._freeUIDs = []
+        # self._freeCellUIDs = []
         self._nextUID = 0
         self._iteration = 0
 
@@ -207,8 +225,140 @@ class Connections(object):
         self._nextSynapseOrdinal = long(0)
         self._nextSegmentOrdinal = long(0)
 
-    #def createCell
-    #def destroyCell
+    def addCell(self, cellData, cell, locationBBox):
+        if self._cells[cell] == None:
+            self._cells[cell] = cellData
+        else:
+            raise ValueError("Cell location already used.")
+
+        self.cellUIDcounter = cell + 1
+        self._cellLocations.insert(cell, locationBBox)
+
+        self.numCells += 1
+
+    def addCellFromFile(self, filename):
+        buf = open(filename, 'rb').read()
+        buf = bytearray(buf)
+        cell = neuronCell.Cell.GetRootAsCell(buf, 0)
+
+        if cell.ConnectionsUID() != self.UID:
+            raise RuntimeWarning(
+                "Cell connections UID [" + str(cell.ConnectionsUID()) +
+                "] does not match connections UID [" + str(self.UID) + "].")
+
+        cellLocationBBox = None
+        if cell.PositionType() == posType.Pos.FloatPos:
+            if self.locationType != "float":
+                raise ValueError(
+                    "Neuron not of position type: " + self.locationType + ". Neuron may need to be projected.")
+            pos_union = FloatPos.FloatPos()
+            pos_union.Init(cell.Position().Bytes, cell.Position().Pos)
+
+            cellLocationBBox = []
+
+            for i in xrange(pos_union.CoordinatesLength()):
+                cellLocationBBox.append(pos_union.Coordinates(i))
+
+        elif cell.PositionType() == posType.Pos.IntPos:
+            if self.locationType != "int":
+                raise ValueError(
+                    "Neuron not of position type: " + self.locationType + ". Neuron may need to be projected.")
+            pos_union = FloatPos.FloatPos()
+            pos_union.Init(cell.Position().Bytes, cell.Position().Pos)
+
+            cellLocationBBox = []
+
+            for i in xrange(pos_union.CoordinatesLength()):
+                cellLocationBBox.append(pos_union.Coordinates(i))
+
+        cellData = CellData(cellLocationBBox, cell.LastUsedIteration())
+        self.addCell(cellData, cell.UID(), cellLocationBBox)
+
+        # todo: add option for breaking class limits for max synapses/segments
+        for i in xrange(cell.SegmentsLength()):
+
+            self.createSegment(cell.UID())
+            cellData._segments[-1]._lastUsedIteration = cell.Segments(i).LastUsedIteration()
+            for j in xrange(cell.Segments(i).SynapsesLength()):
+                syn = cell.Segments(i).Synapses(j)
+                self.createSynapse(cellData._segments[-1], syn.PresynapticCellUID(), syn.Permanence())
+
+    def writeCellToFile(self, cell, filename, destroy=True):
+        builder = flatbuffers.Builder(0)
+
+        # todo: refactor postype and other incorrectly cased includes
+        loc, postype = None
+        if self.locationType == "float":
+            FloatPos.FloatPosStartCoordinatesVector(builder, len(self._cells[cell]._bbox))
+
+            for i in reversed(range(0, len(self._cells[cell]._bbox))):
+                builder.PrependFloat32(self._cells[cell]._bbox[i])
+            loc = builder.EndVector(len(self._cells[cell]._bbox))
+            postype = posType.Pos.FloatPos
+
+        elif self.locationType == "int":
+            IntPos.IntPosStartCoordinatesVector(builder, len(self._cells[cell]._bbox))
+
+            for i in reversed(range(0, len(self._cells[cell]._bbox))):
+                builder.PrependUint32(self._cells[cell]._bbox[i])
+            loc = builder.EndVector(len(self._cells[cell]._bbox))
+            postype = posType.Pos.IntPos
+
+        segments = []
+        for segment in self._cells[cell]._segments:
+            synapses = []
+            for synapse in segment._synapses:
+                CellSynapse.SynapseStart(builder)
+                CellSynapse.SynapseAddPresynapticCellUID(builder, synapse.presynapticCell)
+                CellSynapse.SynapseAddPermanence(builder, synapse.permanence)
+                synapses.append(CellSynapse.SynapseEnd(builder))
+
+            CellSegment.SegmentStartSynapsesVector(builder, len(synapses))
+            for i in reversed(range(0, len(synapses))):
+                builder.PrependUOffsetTRelative(synapses[i])
+            segmentSynapses = builder.EndVector(len(synapses))
+
+            CellSegment.SegmentStart(builder)
+            CellSegment.SegmentAddSynapses(builder, segmentSynapses)
+            CellSegment.SegmentAddLastUsedIteration(builder, segment._lastUsedIteration)
+            segments.append(CellSegment.SegmentEnd(builder))
+
+        neuronCell.CellStartSegmentsVector(builder, len(segments))
+        for i in reversed(range(0, len(segments))):
+            builder.PrependUOffsetTRelative(segments[i])
+        cellSegments = builder.EndVector(len(segments))
+
+        neuronCell.CellStart(builder)
+        neuronCell.CellAddPositionType(builder, postype)
+        neuronCell.CellAddPosition(builder, loc)
+        neuronCell.CellAddLastUsedIteration(builder, self._cells[cell]._lastUsedIteration)
+        neuronCell.CellAddUID(builder, cell)
+        neuronCell.CellAddConnectionsUID(builder, self.UID)
+        neuronCell.CellAddSegments(builder, cellSegments)
+        neuron = neuronCell.CellEnd(builder)
+
+        builder.Finish(neuron)
+
+        buf = builder.Output()
+        open(filename, 'wb').write(buf)
+
+        if destroy:
+            self.destroyCell(cell)
+
+    def destroyCell(self, cell):
+        for segment in self._cells[cell]._segments:
+            self.destroySegment(segment)
+        # self._freeCellUIDs.append(cell)
+
+        # presynaptic cell links will be changed upon activation
+        # todo: create hash map of nearest cells to deleted cell here so that synapses will synapse to nearby cells.
+        # todo:  If synapse doesn't synapse to new cell quickly enough, and old cell UID is no longer in hash map,
+        # todo:  synapse is destroyed
+
+        # remove cell from connection list
+        del self._cells[cell]
+
+        self.numCells -=1
 
     def segmentsForCell(self, cell):
         """ Returns the segments that belong to a cell.
@@ -495,32 +645,44 @@ class Connections(object):
         """
         return segment.cell + (segment._ordinal / float(self._nextSegmentOrdinal))
 
-    def write(self, proto):
+    def writeToFile(self, filename):
         """ Writes serialized data from group to flatbuffers
 
-        @param proto (DynamicStructBuilder) Proto object"""
+        @param filename (string) save file name/location"""
 
-        for i in xrange(len(self._cells)):
-            protoCell = proto.init('cell', self.numCells)
+        builder = flatbuffers.Builder(0)
 
-            segments = self._cells[i]._segments
-            protoSegments = protoCell.init('segments', len(segments))
+        bbox, bboxType = None
+        if self.locationType == "float":
+            FloatBBox.FloatBBoxStartCoordinatesVector(builder, len(self.bbox))
 
-            for j, segment in enumerate(segments):
-                synapses = segment._synapses
-                protoSynapses = protoSegments[j].init('synapses', len(synapses))
-                protoSegments[j].destroyed = False
-                protoSegments[j].lastUsedIteration = segment._lastUsedIteration
+            for i in reversed(range(0, len(self.bbox))):
+                builder.PrependFloat32(self.bbox[i])
+            bbox = builder.EndVector(len(self.bbox))
+            bboxType = BBox.BBox.FloatBBox
 
-                for k, synapse in enumerate(sorted(synapses, key=lambda s: s._ordinal)):
-                    protoSynapses[k].presynapticCell = synapse.presynapticCell
-                    protoSynapses[k].permanence = synapse.permanence
-                    protoSynapses[k].destroyed=False
+        elif self.locationType == "int":
+            IntPos.IntPosStartCoordinatesVector(builder, len(self.bbox))
 
-                proto.maxSegmentsPerCell = self.maxSegmentsPerCell
-                proto.maxSynapsesPerSegment = self.maxSynapsesPerSegment
-                proto.iteration = self._iteration
-                proto.numCells = self.numCells
+            for i in reversed(range(0, len(self.bbox))):
+                builder.PrependUint32(self.bbox[i])
+            bbox = builder.EndVector(len(self.bbox))
+            bboxType = BBox.BBox.FloatBBox
+
+        ConnectionGroup.ConnectionGroupStart(builder)
+        ConnectionGroup.ConnectionGroupAddUID(builder, self.UID)
+        ConnectionGroup.ConnectionGroupAddNumCells(builder, self.numCells)
+        ConnectionGroup.ConnectionGroupAddMaxSegmentsPerCell(builder, self.maxSegmentsPerCell)
+        ConnectionGroup.ConnectionGroupAddMaxSynapsesPerSegment(builder, self.maxSynapsesPerSegment)
+        ConnectionGroup.ConnectionGroupAddBboxType(builder, bboxType)
+        ConnectionGroup.ConnectionGroupAddBbox(builder, bbox)
+        connectionGroup = ConnectionGroup.ConnectionGroupEnd(builder)
+
+        builder.Finish(connectionGroup)
+
+        buf = builder.Output()
+        # todo: force these to write correct extension names
+        open(filename, 'wb').write(buf)
 
     @classmethod
     def readFromFile(cls, filename):
@@ -565,6 +727,7 @@ class Connections(object):
              startWithNoNeurons=True)
 
         return me
+
 
 class Cluster(object):
     """Class to hold data about connected groups of neurons with different properties."""

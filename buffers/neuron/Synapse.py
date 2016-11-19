@@ -61,8 +61,10 @@ class Synapse(object):
 def SynapseStart(builder): builder.StartObject(5)
 def SynapseAddPresynapticCellUID(builder, presynapticCellUID): builder.PrependUint64Slot(0, presynapticCellUID, 0)
 def SynapseAddPermanence(builder, permanence): builder.PrependFloat32Slot(1, permanence, 0)
-def SynapseAddTerminalPositionType(builder, terminalPositionType): builder.PrependUint8Slot(2, terminalPositionType, 0)
-def SynapseAddTerminalPosition(builder, terminalPosition): builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(terminalPosition), 0)
-def SynapseAddOverlaps(builder, overlaps): builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(overlaps), 0)
-def SynapseStartOverlapsVector(builder, numElems): return builder.StartVector(4, numElems, 4)
+
+
+# def SynapseAddTerminalPositionType(builder, terminalPositionType): builder.PrependUint8Slot(2, terminalPositionType, 0)
+# def SynapseAddTerminalPosition(builder, terminalPosition): builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(terminalPosition), 0)
+# def SynapseAddOverlaps(builder, overlaps): builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(overlaps), 0)
+# def SynapseStartOverlapsVector(builder, numElems): return builder.StartVector(4, numElems, 4)
 def SynapseEnd(builder): return builder.EndObject()

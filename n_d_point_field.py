@@ -1,5 +1,4 @@
 import math
-from rng import *
 import numbers
 
 def n_split_points(min_val, max_val, n):
@@ -100,7 +99,10 @@ def pixel_blur_d_float(min_max_array, n):
     min_max_copy = min_max_array[:]
 
     thickness = get_d_thickness(lengths)
-    tiny_d_cube_len = (thickness / n) ** (1.0 / (len(lengths)))
+    try:
+        tiny_d_cube_len = (thickness / n) ** (1.0 / (len(lengths)))
+    except ZeroDivisionError:
+        tiny_d_cube_len = thickness ** (1.0 / (len(lengths)))
     index = 0
     deleted_indices = []
     deleted_lengths = []
@@ -114,7 +116,10 @@ def pixel_blur_d_float(min_max_array, n):
             del min_max_copy[index * 2]
             del min_max_copy[index * 2]
             thickness = get_d_thickness(lengths)
-            tiny_d_cube_len = (thickness / n) ** (1.0 / (len(lengths)))
+            try:
+                tiny_d_cube_len = (thickness / n) ** (1.0 / (len(lengths)))
+            except ZeroDivisionError:
+                tiny_d_cube_len = thickness ** (1.0 / (len(lengths)))
             index = 0
         else:
             index += 1
@@ -310,10 +315,12 @@ def n_dimensional_n_split(min_max_array, n, initializing_object = None):
 
     idx = index.Index(properties=p, interleaved=True)
 
-    for i in xrange(tiny_ds_per_big_d):
-        pt = [tiny_ds[i*dimensions +x] for x in range(dimensions)]
-        pt = [pt[j//2] for j in range(len(pt)*2)]
-        idx.insert(i, tuple(pt), obj=initializing_object)
+    if n > 0:
+        for i in xrange(tiny_ds_per_big_d):
+            pt = [tiny_ds[i * dimensions + x] for x in range(dimensions)]
+            pt = [pt[j // 2] for j in range(len(pt) * 2)]
+            idx.insert(i, tuple(pt), obj=initializing_object)
+
 
     while tiny_ds_per_big_d < n:
         r = n - tiny_ds_per_big_d
@@ -355,9 +362,10 @@ def n_dimensional_n_split_float(min_max_array, n, initializing_object=None):
 
     idx = index.Index(properties=p, interleaved=True)
 
-    for i in xrange(tiny_ds_per_big_d):
-        pt = [tiny_ds[i*dimensions +x] for x in range(dimensions)]
-        idx.insert(i, tuple(pt), obj=initializing_object)
+    if n > 0:
+        for i in xrange(tiny_ds_per_big_d):
+            pt = [tiny_ds[i * dimensions + x] for x in range(dimensions)]
+            idx.insert(i, tuple(pt), obj=initializing_object)
 
     while tiny_ds_per_big_d < n:
         r = n - tiny_ds_per_big_d
@@ -384,9 +392,8 @@ def n_dimensional_n_split_float(min_max_array, n, initializing_object=None):
     return idx
 
 if __name__ == "__main__":
-
-    field = n_dimensional_n_split_float([-27, 37, 0, 500,0,8, 0, 2], 10000)
-    points = list(field.intersection((-27, 0,0, 0, 37, 500, 8, 2), objects=True))
+    field = n_dimensional_n_split_float([-27, 37, 0, 500], 1)
+    points = list(field.intersection((-27, 0, 37, 500), objects=True))
     print([(point.id, point.bbox) for point in points])
     '''maximum = 9223372036854775807
     minimum = 0
