@@ -229,6 +229,7 @@ class vtk_points:
 
 def show_landscape(point_displayer):
     from opensimplex import OpenSimplex
+    import randomSample
 
     simp_r = OpenSimplex(seed=364)
     simp_g = OpenSimplex(seed=535)
@@ -264,6 +265,7 @@ def show_landscape(point_displayer):
 def show_cloud(point_displayer):
     from opensimplex import OpenSimplex
     import math
+    import randomSample
 
     simp_r = OpenSimplex(seed=364)
     simp_g = OpenSimplex(seed=535)
@@ -322,8 +324,8 @@ def show_rand_line_cube(point_displayer):
 
 def show_point_field_test(point_displayer):
     from n_d_point_field import n_dimensional_n_split_float
-    split_pts = n_dimensional_n_split_float([0, 400, 0, 300, 0, 350], 8320)
-    points = list(split_pts.intersection((0, 0, 0, 400, 300, 350), objects=True))
+    split_pts = n_dimensional_n_split_float([-200, 200, -150, 150, -175, 175], 83200)
+    points = list(split_pts.intersection((-200, -150, -175, 200, 150, 175), objects=True))
 
     print(split_pts)
 
