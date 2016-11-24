@@ -2,9 +2,24 @@
 
 A corruption tolerant filetype for saving neurogenesis/neurodegeneration enabled HTM neural networks
 
-##Testing
+##Prerequisites
 
-For running the network, once it's implemented, no packages need to be installed. However, for testing and debugging, vtk is necessary for visualizations and unittest is necessary for unit testing.
+###For whole project
+
+ * rtree:
+   * Get from [here](http://www.lfd.uci.edu/~gohlke/pythonlibs/#rtree)
+
+Rtree sets up a tree of rectangles to sort all the n-dimensional points into. This makes it so individual points can be found in O(log_m(n)) time.
+
+###For Testing and Visualization
+
+ * Anaconda Python 2.7
+   * Get 2.7 version from [here](https://www.continuum.io/downloads)
+   * Set up in Pycharm via File->Settings->Project:[project name]->Project Interpreter
+ * VTK
+   * ` conda install -c anaconda vtk=6.3.0 `
+
+Anaconda is useful for installing VTK. You could build VTK for python, but that's harder to do on Windows.
 
 ###Example output
 
