@@ -27,9 +27,10 @@ Allows saving individual neural columns to files. (Not implemented yet.)
 
 Anaconda is useful for installing VTK. You could build VTK for python, but that's harder to do on Windows.
 
-###Example output
+##Testing
+###Point field testing
+VTK required.
 
-####Point Field Test 1
 ![Point Field Test 1, all points arranged orderly in a box, save for a few outliers, which are also arranged somewhat orderly](https://i.imgur.com/O3uUNHT.png)
 
 All points should be arranged in rows within prism, save for a few outliers, and colors should show linear order.
