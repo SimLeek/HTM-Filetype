@@ -25,7 +25,7 @@ import unittest
 capnp = False
 
 
-from HTMConnections import Connections
+from Connections import Connections
 
 
 class ConnectionsTest(unittest.TestCase):

@@ -4,12 +4,18 @@ A corruption tolerant filetype for saving neurogenesis/neurodegeneration enabled
 
 ##Prerequisites
 
-###For whole project
+###For Whole Project
 
  * rtree:
    * Get from [here](http://www.lfd.uci.edu/~gohlke/pythonlibs/#rtree)
 
 Rtree sets up a tree of rectangles to sort all the n-dimensional points into. This makes it so individual points can be found in O(log_m(n)) time.
+
+###For Saving
+ * flatbuffers
+   * `pip2 install flatbuffers`
+   
+Allows saving individual neural columns to files. (Not implemented yet.)
 
 ###For Testing and Visualization
 

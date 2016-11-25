@@ -24,7 +24,6 @@ table Segment{
 table Cell {
     position:Pos;
     lastUsedIteration:uint;
-    UID:ulong;
     connectionsUID:ulong;
     segments:[Segment] (required);
 }

@@ -19,7 +19,9 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from bisect import bisect_left
+from Columns.ColumnGroup import Column
+from Columns.Util.Constants import EPSILON
+
 from collections import defaultdict
 
 import flatbuffers
@@ -36,187 +38,65 @@ import buffers.neuron.Segment as CellSegment
 import buffers.neuron.Synapse as CellSynapse
 from n_d_point_field import n_dimensional_n_split, n_dimensional_n_split_float
 
-#note: generate UIDs as randint(min_int,max_int) and check if in hash_table
 
-EPSILON = 0.00001 #constant error threshold
+# note: generate UIDs as randint(min_int,max_int) and check if in hash_table
 
-class Segment(object):
-    """ Class containing minimal information to identify a unique segment"""
-
-    __slots__ = ["cell", "UID", "_synapses", "_lastUsedIteration", "_ordinal"]
-
-    def __init__(self, cell, UID, lastUsedIteration, ordinal):
-        """
-        @param cell (int)
-        UID of the cell that this segment is on.
-
-        @param UID (int)
-        This segments unique identifier.
-
-        @param ordinal (long)
-        Used to sort segments. The sort order needs to be consistent between
-        implementations so that tie-breaking is consistent when finding the best
-        matching segment. (needed?)
-        """
-
-        self.cell = cell
-        self.UID = UID
-        self._synapses = set()
-        self._lastUsedIteration = lastUsedIteration
-        self._ordinal = ordinal
-
-    def __eq__(self, other):
-        """This should be used in combination with r-tree locations,
-        as this class is used in combination with r-tree points."""
-
-        return(self.cell == other.cell and
-               self._lastUsedIteration == other._lastUsedIteration and
-               (sorted(self._synapses, key=lambda x: x._ordinal) ==
-                sorted(other._synapses, key=lambda x: x._ordinal)))
-
-class Synapse(object):
-    """ Class containing minimal information to identify a unique synapse """
-
-    __slots__ = ["segment", "presynapticCell", "permanence", "_ordinal"]
-
-    def __init__(self, segment, presynapticCell, permanence, ordinal):
-        """
-        @param segment (object)
-        Segment object that the synapse is synapsed to.
-
-        @param presynapticCell (int)
-        UID of the presynaptic cell of the synapse.
-
-        param ordinal (long)
-        Used to sort synapses. The sort order needs to be consistent between
-        implementations so that tie-breaking is consistent when finding the min
-        permanence synapse.
-        """
-
-        self.segment = segment
-        self.presynapticCell = presynapticCell
-        self.permanence = permanence
-        self._ordinal = ordinal
-
-    def __eq__(self, other):
-        """ Explicitly implement this for unit testing. Allow floating point
-        differences for synapse permanence.
-        """
-        return (self.segment.cell == other.segment.cell and
-                self.presynapticCell == other.presynapticCell and
-                abs(self.permanence - other.permanence) < EPSILON)
-
-class CellData(object):
-    """ Class containing cell information. Internal to the connections. """
-
-    __slots__ = ["_segments", "_bbox", "_lastUsedIteration"]
-
-    def __init__(self, bbox, lastUsedIteration=0):
-        self._segments = []
-        self._bbox = bbox
-        self._lastUsedIteration = lastUsedIteration
-
-    def write(self, proto, UID, loc):
-        """ Writes serialized data from cells to proto objects
-
-        @param proto (DynamicStructBuilder) Proto object"""
-
-        protoCell = proto.init('cell')
-
-        proto.lastUsedIteration = self._lastUsedIteration
-        proto.UID = UID
-        protoLoc = protoCell.init('loc', len(loc))
-        for j, pos in enumerate(loc):
-            protoLoc[j] = pos
-
-        segments = self._segments
-        protoSegments = protoCell.init('segments', len(segments))
-
-        for j, segment in enumerate(segments):
-            synapses = segment._synapses
-            protoSynapses = protoSegments[j].init('synapses', len(synapses))
-            protoSegments[j].destroyed = False
-            protoSegments[j].lastUsedIteration = segment._lastUsedIteration
-
-            for k, synapse in enumerate(sorted(synapses, key=lambda s: s._ordinal)):
-                protoSynapses[k].presynapticCell = synapse.presynapticCell
-                protoSynapses[k].permanence = synapse.permanence
-                protoSynapses[k].destroyed=False
-
-    @classmethod
-    def read(cls, proto, super):
-        """ Reads deserialized data from proto object
-        @param proto (DynamicStructBuilder) Proto object
-        @return (CellData) CellData instance
-        """
-        # pylint: disable=W0212
-
-        protoCell = cls(proto.lastUsedIteration)
-        protoSegments = proto.segments
-
-
-
-def binSearch(arr, val):
-  """ function for running binary search on a sorted list.
-  @param arr (list) a sorted list of integers to search
-  @param val (int)  a integer to search for in the sorted array
-  @return (int) the index of the element if it is found and -1 otherwise.
-  """
-  i = bisect_left(arr, val)
-  if i != len(arr) and arr[i] == val:
-    return i
-  return -1
 
 class Connections(object):
     """ Class to hold data representing the connectivity of a collection of cells. """
 
     def __init__(self,
-                 numCells,
+                 num_columns,
                  bbox,
-                 maxSegmentsPerCell = 255,
-                 maxSynapsesPerSegment = 255,
-                 locationType = "int",
-                 UID=0,
-                 startWithNoNeurons=False):
-        """ @param numCells (int) Number of cells in collection """
+                 max_cells_per_column=16,
+                 max_segments_per_cell=255,
+                 max_synapses_per_segment=255,
+                 location_type="int",
+                 uid=0,
+                 start_with_no_neurons=False):
+        """ @param num_columns (int) Number of cells in collection """
 
-        #save member variables
-        self.numCells = numCells
-        assert maxSegmentsPerCell > 0
-        assert maxSynapsesPerSegment > 0
-        self.maxSegmentsPerCell = maxSegmentsPerCell
-        self.maxSynapsesPerSegment = maxSynapsesPerSegment
+        # check argument validity
+        assert max_cells_per_column > 0
+        assert max_segments_per_cell > 0
+        assert max_synapses_per_segment > 0
+        assert isinstance(max_cells_per_column, int)
+        assert isinstance(max_segments_per_cell, int)
+        assert isinstance(max_synapses_per_segment, int)
 
-        self.locationType = locationType
-        self.UID = UID
+        # save member variables
+        self.numColumns = num_columns
+        self.maxCellsPerColumn = max_cells_per_column
+        self.maxSegmentsPerCell = max_segments_per_cell
+        self.maxSynapsesPerSegment = max_synapses_per_segment
+
+        # save class variables
+        self.locationType = location_type
+        self.UID = uid
         self.bbox = bbox
 
-        if not startWithNoNeurons:
-            if locationType == "int":
-                self._cellLocations = n_dimensional_n_split(bbox, numCells)
-            elif locationType == "float":
-                self._cellLocations = n_dimensional_n_split_float(bbox, numCells, CellData())
+        if not start_with_no_neurons:
+            if location_type == "int":
+                self._columnLocations = n_dimensional_n_split(bbox, num_columns)
+            elif location_type == "float":
+                self._columnLocations = n_dimensional_n_split_float(bbox, num_columns)
 
-            points = ((self._cellLocations.intersection(bbox, objects=True)))
+            points = (self._columnLocations.intersection(bbox, objects=True))
 
-            # check if defaultdict is useful here (need dict and not set dui to calling via UIDs)
-            # keeping dict in addition to r-tree because O(1) access/storage vs O(log_2(n))
-            #todo: takes too long!
-            self._cells = dict([(point.id, CellData(point.bbox)) for point in points])
-            self.cellUIDcounter = numCells
+            self._cells = dict([(point.id, Column(point.bbox, self)) for point in points])
+            self.columnUIDcounter = num_columns
         else:
 
-            self._cellLocations = n_dimensional_n_split(bbox, 0)
+            self._columnLocations = n_dimensional_n_split(bbox, 0)
 
             self._cells = dict()
-            self.cellUIDcounter = 0
+            self.columnUIDcounter = 0
 
         self._synapsesForPresynapticCell = defaultdict(set)
         self._segmentForUID = dict()
 
         self._numSynapses = 0
         self._freeUIDs = []
-        # self._freeCellUIDs = []
         self._nextUID = 0
         self._iteration = 0
 
@@ -225,16 +105,16 @@ class Connections(object):
         self._nextSynapseOrdinal = long(0)
         self._nextSegmentOrdinal = long(0)
 
-    def addCell(self, cellData, cell, locationBBox):
-        if self._cells[cell] == None:
-            self._cells[cell] = cellData
+    def addColumn(self, columnUID, locationBBox):
+        if self._cells[columnUID] == None:
+            self._cells[columnUID] = column
         else:
             raise ValueError("Cell location already used.")
 
-        self.cellUIDcounter = cell + 1
-        self._cellLocations.insert(cell, locationBBox)
+        self.columnUIDcounter = columnUID + 1
+        self._columnLocations.insert(columnUID, locationBBox)
 
-        self.numCells += 1
+        self.numColumns += 1
 
     def addCellFromFile(self, filename):
         buf = open(filename, 'rb').read()
@@ -345,21 +225,6 @@ class Connections(object):
         if destroy:
             self.destroyCell(cell)
 
-    def destroyCell(self, cell):
-        for segment in self._cells[cell]._segments:
-            self.destroySegment(segment)
-        # self._freeCellUIDs.append(cell)
-
-        # presynaptic cell links will be changed upon activation
-        # todo: create hash map of nearest cells to deleted cell here so that synapses will synapse to nearby cells.
-        # todo:  If synapse doesn't synapse to new cell quickly enough, and old cell UID is no longer in hash map,
-        # todo:  synapse is destroyed
-
-        # remove cell from connection list
-        del self._cells[cell]
-
-        self.numCells -=1
-
     def segmentsForCell(self, cell):
         """ Returns the segments that belong to a cell.
 
@@ -408,52 +273,12 @@ class Connections(object):
 
         return self._cells[cell]._segments[idx]
 
-    def _leastRecentlyUsedSegment(self, cell):
-        """ Find this cell's segment that was least recently used.
-        Implement this explicitly to make sure that tie-breaking is consistent.
-        When there's a tie, choose the oldest segment.
-        @param cell (int) Cell to query.
-        @return (Object) Least recently used segment.
-        """
-        minSegment = None
-        minIteration = float("inf")
-
-        for segment in self.segmentsForCell(cell):
-            if segment._lastUsedIteration < minIteration:
-                minSegment = segment
-                minIteration = segment._lastUsedIteration
-
-        assert minSegment is not None
-
-        return minSegment
-
-    def _minPermanenceSynapse(self, segment):
-        """ Find this segment's synapse with the smallest permanence.
-        This method is NOT equivalent to a simple min() call. It uses an EPSILON to
-        account for floating point differences between C++ and Python.
-        @param segment (Object) Segment to query.
-        @return (Object) Synapse with the minimal permanence
-        Note: On ties it will choose the first occurrence of the minimum permanence.
-        """
-        minSynapse = None
-        minPermanence = float("inf")
-
-        for synapse in sorted(self.synapsesForSegment(segment),
-                              key=lambda s: s._ordinal):
-            if synapse.permanence < minPermanence - EPSILON:
-                minSynapse = synapse
-                minPermanence = synapse.permanence
-
-        assert minSynapse is not None
-
-        return minSynapse
-
-    def segmentForUID(self, flatIdx):
+    def segmentForUID(self, uid):
         """ Get the segment with the specified flatIdx.
         @param flatIdx (int) The segment's flattened dict index.
         @return (Segment) segment object
         """
-        return self._segmentForUID[flatIdx]
+        return self._segmentForUID[uid]
 
     def segmentFlatListLength(self):
         """ Get larger than the needed length for a list to hold a value for every segment's
@@ -490,52 +315,6 @@ class Connections(object):
         if len(inputSynapses) == 0:
             del self._synapsesForPresynapticCell[synapse.presynapticCell]
 
-    def destroySegment(self, segment):
-        """ Destroys a segment.
-        @param segment (Object) Segment object representing the segment to be
-                                destroyed
-        """
-        # Remove the synapses from all data structures outside this Segment.
-        for synapse in segment._synapses:
-            self._removeSynapseFromPresynapticMap(synapse)
-        self._numSynapses -= len(segment._synapses)
-
-        # Remove the segment from the cell's list.
-        segments = self._cells[segment.cell]._segments
-        i = segments.index(segment)
-        del segments[i]
-
-        # Free the flatIdx and remove the final reference so the Segment can be
-        # garbage-collected.
-        self._freeUIDs.append(segment.UID)
-        self._segmentForUID[segment.UID] = None
-
-    def createSegment(self, cell):
-        """ Adds a new segment on a cell.
-        @param cell (int) Cell index
-        @return (int) New segment index
-        """
-        while self.numSegments(cell) >= self.maxSegmentsPerCell:
-            self.destroySegment(self._leastRecentlyUsedSegment(cell))
-
-        cellData = self._cells[cell]
-
-        if len(self._freeUIDs) > 0:
-            UID = self._freeUIDs.pop()
-        else:
-            UID = self._nextUID
-            self._segmentForUID[UID] = None
-            self._nextUID += 1
-
-        ordinal = self._nextSegmentOrdinal
-        self._nextSegmentOrdinal += 1
-
-        segment = Segment(cell, UID, self._iteration, ordinal)
-        cellData._segments.append(segment)
-        self._segmentForUID[UID] = segment
-
-        return segment
-
     def numSynapses(self, segment=None):
         """ Returns the number of Synapses.
         @param segment (Object) optional parameter to get the number of synapses on
@@ -547,47 +326,15 @@ class Connections(object):
             return len(segment._synapses)
         return self._numSynapses
 
-    def destroySynapse(self, synapse):
-        """ Destroys a synapse.
-        @param synapse (Object) Synapse object to destroy
-        """
-
+    def _decrementNumSynapses(self):
         self._numSynapses -= 1
 
-        self._removeSynapseFromPresynapticMap(synapse)
-
-        synapse.segment._synapses.remove(synapse)
-
-    def createSynapse(self, segment, presynapticCell, permanence):
-        """ Creates a new synapse on a segment.
-        @param segment         (Object) Segment object for synapse to be synapsed to
-        @param presynapticCell (int)    Source cell index
-        @param permanence      (float)  Initial permanence
-        @return (Object) created Synapse object
-        """
-
-        while self.numSynapses(segment) >= self.maxSynapsesPerSegment:
-            self.destroySynapse(self._minPermanenceSynapse(segment))
-
-        idx = len(segment._synapses)
-        synapse = Synapse(segment, presynapticCell, permanence,
-                          self._nextSynapseOrdinal)
-        self._nextSynapseOrdinal += 1
-        segment._synapses.add(synapse)
-
-        self._synapsesForPresynapticCell[presynapticCell].add(synapse)
-
+    def _incrementNumSynapses(self):
         self._numSynapses += 1
 
-        return synapse
-
-    def updateSynapsePermanence(self, synapse, permanence):
-        """ Updates the permanence for a synapse.
-        @param synapse    (Object) Synapse object to be updated
-        @param permanence (float)  New permanence
-        """
-
-        synapse.permanence = permanence
+    def _next_synapse_ordinal(self):
+        self._nextSynapseOrdinal +=1
+        return self._nextSynapseOrdinal-1
 
     def computeActivity(self, activePresynapticCells, connectedPermanence):
         """ Compute each segment's number of active synapses for a given input.
@@ -616,34 +363,11 @@ class Connections(object):
         return (numActiveConnectedSynapsesForSegment,
                 numActivePotentialSynapsesForSegment)
 
-    def recordSegmentActivity(self, segment):
-        """ Record the fact that a segment had some activity. This information is
-            used during segment cleanup.
-            @param segment The segment that had some activity.
-        """
-        segment._lastUsedIteration = self._iteration
-
-    def recordCellActivity(self, cell):
-        """ Record the fact that a cell had some activity. This information is
-            used during cell cleanup.
-            @param cell The UID of the cell that had some activity.
-        """
-        cell._lastUsedIteration = self._iteration
-
     def startNewIteration(self):
         """ Mark the passage of time. This information is used during segment
         cleanup.
         """
         self._iteration += 1
-
-    def segmentPositionSortKey(self, segment):
-        """ Return a numeric key for sorting this segment.
-        This can be used with `sorted`.
-        @param segment
-        A Segment within this Connections.
-        @retval (float) A numeric key for sorting.
-        """
-        return segment.cell + (segment._ordinal / float(self._nextSegmentOrdinal))
 
     def writeToFile(self, filename):
         """ Writes serialized data from group to flatbuffers
@@ -671,7 +395,7 @@ class Connections(object):
 
         ConnectionGroup.ConnectionGroupStart(builder)
         ConnectionGroup.ConnectionGroupAddUID(builder, self.UID)
-        ConnectionGroup.ConnectionGroupAddNumCells(builder, self.numCells)
+        ConnectionGroup.ConnectionGroupAddNumCells(builder, self.numColumns)
         ConnectionGroup.ConnectionGroupAddMaxSegmentsPerCell(builder, self.maxSegmentsPerCell)
         ConnectionGroup.ConnectionGroupAddMaxSynapsesPerSegment(builder, self.maxSynapsesPerSegment)
         ConnectionGroup.ConnectionGroupAddBboxType(builder, bboxType)
@@ -694,7 +418,7 @@ class Connections(object):
 
         buf = open(filename, 'rb').read()
         buf = bytearray(buf)
-        connection_group = ConnectionGroup.ConnectionGroup.GetRootAsConnectionGroup(buf,0)
+        connection_group = ConnectionGroup.ConnectionGroup.GetRootAsConnectionGroup(buf, 0)
 
         bbox = None
         locationType = None
@@ -718,13 +442,13 @@ class Connections(object):
                 bbox.append(bbox_union.Coordinates(i))
 
         me = cls(
-             connection_group.NumCells(),
-             bbox,
-             connection_group.MaxSegmentsPerCell(),
-             connection_group.MaxSynapsesPerSegment(),
-             locationType,
-             connection_group.UID(),
-             startWithNoNeurons=True)
+            connection_group.NumCells(),
+            bbox,
+            connection_group.MaxSegmentsPerCell(),
+            connection_group.MaxSynapsesPerSegment(),
+            locationType,
+            connection_group.UID(),
+            startWithNoNeurons=True)
 
         return me
 
