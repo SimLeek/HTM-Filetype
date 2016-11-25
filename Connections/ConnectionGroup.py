@@ -109,7 +109,7 @@ class Connections(object):
 
     def addColumn(self, columnUID, locationBBox):
         if self._cells[columnUID] == None:
-            self._cells[columnUID] = Column(locationBBox, self)
+            self._cells[columnUID] = Column(locationBBox, self, self._iteration)
         else:
             raise ValueError("Cell location already used.")
 
