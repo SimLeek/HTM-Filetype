@@ -30,6 +30,8 @@ table Column {
     position:BBox;
     connectionsUID:ulong;
     cells:[Cell];
+    lastUsedIteration:uint;
+
 }
 
 root_type Cell;

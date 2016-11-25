@@ -137,36 +137,34 @@ class Connections(object):
                     "Column not of position type: "
                     + self.locationType
                     + ". Column may need to be projected.")
+            pos_union = ColumnFloatBBox.FloatBBox()
+            pos_union.Init(column.Position().Bytes, column.Position().Pos)
+
+            columnLocationBBox = []
+
+            for i in xrange(pos_union.CoordinatesLength()):
+                columnLocationBBox.append(pos_union.Coordinates(i))
+        elif column.PositionType() == ColumnBBox.BBox.IntBBox:
+            if self.locationType != "int":
+                raise ValueError("Neuron not of position type: "
+                                 + self.locationType
+                                 + ". Neuron may need to be projected.")
+            pos_union = ColumnIntBBox.IntBBox()
+            pos_union.Init(column.Position().Bytes, column.Position().Pos)
+
+            columnLocationBBox = []
+
+            for i in xrange(pos_union.CoordinatesLength()):
+                columnLocationBBox.append(pos_union.Coordinates(i))
+
+        #todo: add option to update iteration or keep old iteration
+        columnData = Column(columnLocationBBox, self, column.LastUsedIteration())
+
 
     def addCellFromFile(self, filename):
         buf = open(filename, 'rb').read()
         buf = bytearray(buf)
         cell = neuronCell.Cell.GetRootAsCell(buf, 0)
-
-        cellLocationBBox = None
-        if cell.PositionType() == posType.Pos.FloatPos:
-            if self.locationType != "float":
-                raise ValueError(
-                    "Neuron not of position type: " + self.locationType + ". Neuron may need to be projected.")
-            pos_union = FloatPos.FloatPos()
-            pos_union.Init(cell.Position().Bytes, cell.Position().Pos)
-
-            cellLocationBBox = []
-
-            for i in xrange(pos_union.CoordinatesLength()):
-                cellLocationBBox.append(pos_union.Coordinates(i))
-
-        elif cell.PositionType() == posType.Pos.IntPos:
-            if self.locationType != "int":
-                raise ValueError(
-                    "Neuron not of position type: " + self.locationType + ". Neuron may need to be projected.")
-            pos_union = FloatPos.FloatPos()
-            pos_union.Init(cell.Position().Bytes, cell.Position().Pos)
-
-            cellLocationBBox = []
-
-            for i in xrange(pos_union.CoordinatesLength()):
-                cellLocationBBox.append(pos_union.Coordinates(i))
 
         cellData = CellData(cellLocationBBox, cell.LastUsedIteration())
         self.addCell(cellData, cell.UID(), cellLocationBBox)

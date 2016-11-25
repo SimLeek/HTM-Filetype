@@ -62,10 +62,18 @@ class Column(object):
             return self._tab.VectorLen(o)
         return 0
 
-def ColumnStart(builder): builder.StartObject(4)
+    # Column
+    def LastUsedIteration(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Uint32Flags, o + self._tab.Pos)
+        return 0
+
+def ColumnStart(builder): builder.StartObject(5)
 def ColumnAddPositionType(builder, positionType): builder.PrependUint8Slot(0, positionType, 0)
 def ColumnAddPosition(builder, position): builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(position), 0)
 def ColumnAddConnectionsUID(builder, connectionsUID): builder.PrependUint64Slot(2, connectionsUID, 0)
 def ColumnAddCells(builder, cells): builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(cells), 0)
 def ColumnStartCellsVector(builder, numElems): return builder.StartVector(4, numElems, 4)
+def ColumnAddLastUsedIteration(builder, lastUsedIteration): builder.PrependUint32Slot(4, lastUsedIteration, 0)
 def ColumnEnd(builder): return builder.EndObject()
