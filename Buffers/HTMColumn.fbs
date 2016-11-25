@@ -1,14 +1,14 @@
-namespace neuron;
+namespace Column;
 
-table FloatPos{
+table FloatBBox{
     coordinates:[float];
 }
 
-table IntPos{
+table IntBBox{
     coordinates:[float];
 }
 
-union Pos {FloatPos, IntPos}
+union BBox {FloatBBox, IntBBox}
 
 table Synapse{
     presynapticCellUID:ulong;
@@ -17,15 +17,19 @@ table Synapse{
 }
 
 table Segment{
-    synapses:[Synapse] (required);
+    synapses:[Synapse];
     lastUsedIteration:uint;
 }
 
 table Cell {
-    position:Pos;
     lastUsedIteration:uint;
+    segments:[Segment];
+}
+
+table Column {
+    position:BBox;
     connectionsUID:ulong;
-    segments:[Segment] (required);
+    cells:[Cell];
 }
 
 root_type Cell;

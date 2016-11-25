@@ -26,16 +26,17 @@ from collections import defaultdict
 
 import flatbuffers
 
-import buffers.connectiongroup.BBox as BBox
-import buffers.connectiongroup.ConnectionGroup as ConnectionGroup
-import buffers.connectiongroup.FloatBBox as FloatBBox
-import buffers.connectiongroup.IntBBox as IntBBox
-import buffers.neuron.Cell as neuronCell
-import buffers.neuron.FloatPos as FloatPos
-import buffers.neuron.IntPos as IntPos
-import buffers.neuron.Pos as posType
-import buffers.neuron.Segment as CellSegment
-import buffers.neuron.Synapse as CellSynapse
+import Buffers.connectiongroup.BBox as BBox
+import Buffers.connectiongroup.ConnectionGroup as ConnectionGroup
+import Buffers.connectiongroup.FloatBBox as FloatBBox
+import Buffers.connectiongroup.IntBBox as IntBBox
+import Buffers.Column.Column as neuralColumn
+import Buffers.Column.Cell as neuronCell
+import Buffers.Column.FloatBBox as ColumnFloatBBox
+import Buffers.Column.IntBBox as ColumnIntBBox
+import Buffers.Column.BBox as ColumnBBox
+import Buffers.Column.Segment as CellSegment
+import Buffers.Column.Synapse as CellSynapse
 from n_d_point_field import n_dimensional_n_split, n_dimensional_n_split_float
 
 
@@ -53,7 +54,8 @@ class Connections(object):
                  max_synapses_per_segment=255,
                  location_type="int",
                  uid=0,
-                 start_with_no_neurons=False):
+                 start_with_no_columns=False,
+                 cell_learning_height=int("inf")):
         """ @param num_columns (int) Number of cells in collection """
 
         # check argument validity
@@ -75,7 +77,7 @@ class Connections(object):
         self.UID = uid
         self.bbox = bbox
 
-        if not start_with_no_neurons:
+        if not start_with_no_columns:
             if location_type == "int":
                 self._columnLocations = n_dimensional_n_split(bbox, num_columns)
             elif location_type == "float":
@@ -107,24 +109,39 @@ class Connections(object):
 
     def addColumn(self, columnUID, locationBBox):
         if self._cells[columnUID] == None:
-            self._cells[columnUID] = column
+            self._cells[columnUID] = Column(locationBBox, self)
         else:
             raise ValueError("Cell location already used.")
 
         self.columnUIDcounter = columnUID + 1
-        self._columnLocations.insert(columnUID, locationBBox)
+        self._columnLocations.insert(columnUID, locationBBox, self._iteration)
 
         self.numColumns += 1
+
+    def addColumnFromFile(self, filename):
+        flat_buffer = open(filename, 'rb').read()
+        flat_buffer = bytearray(flat_buffer)
+        self.addColumnFromBuf(flat_buffer)
+
+    def addColumnFromBuf(self, flat_buffer):
+        column = neuralColumn.Column.GetRootAsColumn(flat_buffer, 0)
+        if column.ConnectionsUID() != self.UID:
+            raise RuntimeWarning(
+                "Cell connections UID [" + str(cell.ConnectionsUID()) +
+                "] does not match connections UID [" + str(self.UID) + "].")
+
+        columnLocationBBox = None
+        if column.PositionType() == ColumnBBox.BBox.FloatBBox:
+            if self.locationType != "float":
+                raise ValueError (
+                    "Column not of position type: "
+                    + self.locationType
+                    + ". Column may need to be projected.")
 
     def addCellFromFile(self, filename):
         buf = open(filename, 'rb').read()
         buf = bytearray(buf)
         cell = neuronCell.Cell.GetRootAsCell(buf, 0)
-
-        if cell.ConnectionsUID() != self.UID:
-            raise RuntimeWarning(
-                "Cell connections UID [" + str(cell.ConnectionsUID()) +
-                "] does not match connections UID [" + str(self.UID) + "].")
 
         cellLocationBBox = None
         if cell.PositionType() == posType.Pos.FloatPos:

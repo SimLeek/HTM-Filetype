@@ -1,9 +1,4 @@
-namespace connectiongroup;
-
-enum LocationType:byte{
-    intType = 1,
-    floatType
-}
+namespace ConnectionGroup;
 
 table FloatBBox{
     coordinates:[float];
@@ -20,6 +15,7 @@ table ConnectionGroup{
     numCells:uint;
     maxSegmentsPerCell:uint = 255;
     maxSynapsesPerSegment:uint = 255;
+    maxCellsPerColumn:uint = 16;
     bbox:BBox;
 }
 

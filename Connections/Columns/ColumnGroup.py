@@ -3,12 +3,11 @@ from Cell import CellData
 class Column(object):
     __slots__ = ["_cells", "_bbox", "_lastUsedIteration", "_connectionsGroup"]
 
-    def __init__(self, bbox, connections_group, lastUsedIteration=0):
+    def __init__(self, bbox, connections_group, lastUsedIteration):
         self._cells = []
         self._bbox = bbox
         self._lastUsedIteration = lastUsedIteration
         self._connectionsGroup = connections_group
-
 
     def _leastRecentlyUsedCell(self):
         minCell = None
@@ -24,12 +23,12 @@ class Column(object):
 
         return minCell
 
-    def addCell(self):
+    def addCell(self, iteration):
 
         while len(self._cells) >= self._connectionsGroup.max_cells_per_column:
             self._leastRecentlyUsedCell().destroy()
 
-        cell = CellData()
+        cell = CellData(iteration, self._connectionsGroup)
         self._cells.append(cell)
 
         return cell
